@@ -3,11 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard } from "lucide-react";
+import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare } from "lucide-react";
 import clsx from "clsx";
 import { motion } from "framer-motion";
 
-const routes = [
+const hrRoutes = [
   {
     name: "Inicio",
     path: "/",
@@ -35,10 +35,31 @@ const routes = [
   },
 ];
 
+const mantenimientoRoutes = [
+  {
+    name: "Inicio",
+    path: "/",
+    icon: LayoutDashboard,
+  },
+  {
+    name: "Panel de Tickets",
+    path: "/mantenimiento",
+    icon: Wrench,
+  },
+  {
+    name: "Nuevo Ticket",
+    path: "/mantenimiento/nuevo",
+    icon: PlusSquare,
+  },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
 
   if (pathname === "/") return null;
+
+  const isMantenimiento = pathname.startsWith("/mantenimiento");
+  const routes = isMantenimiento ? mantenimientoRoutes : hrRoutes;
 
   return (
     <motion.aside
@@ -55,7 +76,10 @@ export function Sidebar() {
 
       <nav className="flex-1 p-4 space-y-2">
         {routes.map((route) => {
-          const isActive = pathname === route.path;
+          const isActive = pathname === route.path || (route.path !== "/" && pathname.startsWith(route.path) && route.path !== "/mantenimiento");
+          // Pequeño ajuste para que /mantenimiento no marque activo si estamos en /mantenimiento/nuevo
+          const isExactActive = pathname === route.path;
+
           const Icon = route.icon;
 
           return (
@@ -64,12 +88,12 @@ export function Sidebar() {
               href={route.path}
               className={clsx(
                 "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative group",
-                isActive
+                isExactActive
                   ? "text-primary font-medium"
                   : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
               )}
             >
-              {isActive && (
+              {isExactActive && (
                 <motion.div
                   layoutId="sidebar-active"
                   className="absolute inset-0 bg-primary/10 rounded-xl"
@@ -79,7 +103,7 @@ export function Sidebar() {
               <Icon
                 className={clsx(
                   "w-5 h-5 relative z-10 transition-colors",
-                  isActive ? "text-primary" : "text-gray-400 group-hover:text-gray-600"
+                  isExactActive ? "text-primary" : "text-gray-400 group-hover:text-gray-600"
                 )}
               />
               <span className="relative z-10">{route.name}</span>
