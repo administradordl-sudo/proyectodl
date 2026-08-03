@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { updateTicketStatus, addTicketComment } from '../actions';
 import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
+import Select from '@/components/ui/Select';
 
 type Comentario = {
   id: string;
@@ -101,7 +102,7 @@ export default function TicketDetail({ ticket }: { ticket: TicketDetalle }) {
     }
   };
 
-  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleStatusChange = async (e: any) => {
     const nuevoEstado = e.target.value;
     setIsUpdatingStatus(true);
     const result = await updateTicketStatus(ticket.id, nuevoEstado);
@@ -157,13 +158,7 @@ export default function TicketDetail({ ticket }: { ticket: TicketDetalle }) {
           Volver al Panel
         </Link>
         
-        {/* Botón flotante Volver (Mobile) */}
-        <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <Link href="/mantenimiento" className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-full shadow-2xl hover:bg-gray-800 active:scale-95 transition-all font-medium text-sm border border-gray-700 whitespace-nowrap">
-            <ArrowLeft className="w-4 h-4" />
-            Volver al Panel
-          </Link>
-        </div>
+
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex justify-between items-start mb-4">
@@ -205,18 +200,19 @@ export default function TicketDetail({ ticket }: { ticket: TicketDetalle }) {
             <div className="border-t border-gray-100 pt-4">
               <span className="block text-gray-500 text-xs uppercase tracking-wider mb-2">Estado del Ticket</span>
               <div className="relative">
-                <select 
+                <Select 
+                  name="estado"
                   value={estado} 
                   onChange={handleStatusChange}
-                  disabled={isUpdatingStatus}
-                  className="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 disabled:opacity-50 appearance-none font-medium"
-                >
-                  <option value="Pendiente">Pendiente</option>
-                  <option value="En Progreso">En Progreso</option>
-                  <option value="Resuelto">Resuelto</option>
-                  <option value="Cerrado">Cerrado</option>
-                </select>
-                {isUpdatingStatus && <Loader2 className="absolute right-3 top-2.5 w-4 h-4 animate-spin text-gray-400" />}
+                  options={[
+                    { value: 'Pendiente', label: 'Pendiente' },
+                    { value: 'En Progreso', label: 'En Progreso' },
+                    { value: 'Resuelto', label: 'Resuelto' },
+                    { value: 'Cerrado', label: 'Cerrado' }
+                  ]}
+                  triggerClassName={`w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium ${isUpdatingStatus ? 'opacity-50 pointer-events-none' : ''}`}
+                />
+                {isUpdatingStatus && <Loader2 className="absolute right-10 top-3 w-4 h-4 animate-spin text-gray-400" />}
               </div>
             </div>
 

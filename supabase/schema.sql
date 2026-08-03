@@ -179,5 +179,33 @@ CREATE POLICY "Permitir crear comentarios"
 ON public.ticket_comentarios FOR INSERT
 WITH CHECK (true);
 
+-- ==========================================
+-- CONFIGURACIÓN DEL SISTEMA (Sedes y Bancos)
+-- ==========================================
 
+CREATE TABLE IF NOT EXISTS public.config_sedes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
+CREATE TABLE IF NOT EXISTS public.config_bancos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Insertar valores por defecto
+INSERT INTO public.config_sedes (nombre) VALUES ('Principal'), ('Almacén') ON CONFLICT DO NOTHING;
+INSERT INTO public.config_bancos (nombre) VALUES ('BCP'), ('Interbank'), ('BBVA') ON CONFLICT DO NOTHING;
+
+-- Habilitar RLS
+ALTER TABLE public.config_sedes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.config_bancos ENABLE ROW LEVEL SECURITY;
+
+-- Políticas
+CREATE POLICY "Permitir lectura de sedes" ON public.config_sedes FOR SELECT USING (true);
+CREATE POLICY "Permitir insertar sedes" ON public.config_sedes FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Permitir lectura de bancos" ON public.config_bancos FOR SELECT USING (true);
+CREATE POLICY "Permitir insertar bancos" ON public.config_bancos FOR INSERT WITH CHECK (true);

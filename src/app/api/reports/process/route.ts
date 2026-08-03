@@ -30,9 +30,21 @@ export async function POST(request: Request) {
     const feriadosMap = new Map<string, string>();
     feriadosData?.forEach((f) => feriadosMap.set(f.fecha, f.descripcion));
 
+    // Helper to normalize names (e.g. "Santiago Pazos Garcia" and "PAZOS GARCIA, SANTIAGO" both become "GARCIA PAZOS SANTIAGO")
+    const normalizeName = (name: string) => {
+      if (!name) return '';
+      return name
+        .toUpperCase()
+        .replace(/[,.]/g, '') // Remove commas and dots
+        .split(/\s+/) // Split by whitespace
+        .filter(w => w.length > 0)
+        .sort() // Sort alphabetically to ignore order
+        .join(' ');
+    };
+
     const permisosMap = new Map<string, string>();
     permisosData?.forEach((p) =>
-      permisosMap.set(`${p.nombre_trabajador}_${p.fecha_permiso}`, p.motivo)
+      permisosMap.set(`${normalizeName(p.nombre_trabajador)}_${p.fecha_permiso}`, p.motivo)
     );
 
     // 2. Read the Excel file
@@ -153,7 +165,8 @@ export async function POST(request: Request) {
         }
 
         // Check permiso
-        const permisoKey = `${nombre}_${fechaStr}`;
+        const normalizedExcelName = normalizeName(nombre);
+        const permisoKey = `${normalizedExcelName}_${fechaStr}`;
         if (permisosMap.has(permisoKey)) {
           labels.push(`PERMISO: ${permisosMap.get(permisoKey)}`);
           isForgiven = true;

@@ -6,10 +6,12 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Select from '@/components/ui/Select';
 
 export default function TicketForm() {
   const router = useRouter();
   const [categoria, setCategoria] = useState('');
+  const [prioridad, setPrioridad] = useState('Media');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -68,6 +70,7 @@ export default function TicketForm() {
         setMessage({ type: 'success', text: 'Ticket de mantenimiento creado exitosamente.' });
         (e.target as HTMLFormElement).reset();
         setCategoria('');
+        setPrioridad('Media');
         setFile(null);
         setTimeout(() => {
           router.push('/mantenimiento');
@@ -123,37 +126,38 @@ export default function TicketForm() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
             <label htmlFor="categoria" className="block text-sm font-medium text-gray-700 mb-1">Categoría *</label>
-            <select
-              id="categoria"
+            <Select
               name="categoria"
               required
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white transition-colors"
-            >
-              <option value="" disabled>Selecciona una categoría</option>
-              <option value="Infraestructura">Infraestructura</option>
-              <option value="Reparaciones">Reparaciones</option>
-              <option value="Mantenimiento General">Mantenimiento General</option>
-              <option value="Mantenimiento Preventivo">Mantenimiento Preventivo</option>
-              <option value="Mantenimiento de Unidades">Mantenimiento de Unidades</option>
-            </select>
+              placeholder="Selecciona una categoría"
+              options={[
+                { value: 'Infraestructura', label: 'Infraestructura' },
+                { value: 'Reparaciones', label: 'Reparaciones' },
+                { value: 'Mantenimiento General', label: 'Mantenimiento General' },
+                { value: 'Mantenimiento Preventivo', label: 'Mantenimiento Preventivo' },
+                { value: 'Mantenimiento de Unidades', label: 'Mantenimiento de Unidades' }
+              ]}
+              triggerClassName="px-4 py-2 border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
           </div>
 
           <div>
             <label htmlFor="prioridad" className="block text-sm font-medium text-gray-700 mb-1">Prioridad *</label>
-            <select
-              id="prioridad"
+            <Select
               name="prioridad"
               required
-              defaultValue="Media"
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white transition-colors"
-            >
-              <option value="Baja">Baja</option>
-              <option value="Media">Media</option>
-              <option value="Alta">Alta</option>
-              <option value="Emergencia">Emergencia</option>
-            </select>
+              value={prioridad}
+              onChange={(e) => setPrioridad(e.target.value)}
+              options={[
+                { value: 'Baja', label: 'Baja' },
+                { value: 'Media', label: 'Media' },
+                { value: 'Alta', label: 'Alta' },
+                { value: 'Emergencia', label: 'Emergencia' }
+              ]}
+              triggerClassName="px-4 py-2 border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
           </div>
         </div>
 

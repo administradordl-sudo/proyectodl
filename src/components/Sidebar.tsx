@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users } from "lucide-react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,6 +34,11 @@ const hrRoutes = [
     path: "/hr/reports",
     icon: Upload,
   },
+  {
+    name: "Dashboard (KPIs)",
+    path: "/hr/kpis",
+    icon: BarChart3,
+  },
 ];
 
 const mantenimientoRoutes = [
@@ -56,6 +61,7 @@ const mantenimientoRoutes = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -75,17 +81,43 @@ export function Sidebar() {
           <button onClick={() => setIsOpen(true)} className="p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors">
             <Menu className="w-6 h-6 text-gray-700" />
           </button>
-          <h1 className="text-lg font-bold text-primary">DICAR LOGISTIC</h1>
+          <img src="/logo.png" alt="DICAR LOGISTIC" className="h-8 object-contain" />
         </div>
         
-        {/* Regresar al inicio visible en topbar */}
+        {/* Botones superiores: Atrás y Inicio */}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => router.back()}
+            className="flex items-center justify-center p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+            title="Atrás"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <Link 
+            href="/" 
+            className="flex items-center justify-center p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+            title="Inicio"
+          >
+            <Home className="w-5 h-5" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Botones de acción en PC (Esquina superior derecha) */}
+      <div className="hidden md:flex fixed top-6 right-8 z-50 items-center gap-2">
+        <button 
+          onClick={() => router.back()}
+          className="flex items-center justify-center p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors shadow-sm border border-blue-100"
+          title="Atrás"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
         <Link 
           href="/" 
-          className="flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium text-sm"
-          title="Regresar al Menú Principal"
+          className="flex items-center justify-center p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors shadow-sm border border-red-100"
+          title="Inicio"
         >
           <Home className="w-5 h-5" />
-          <span className="hidden sm:inline">Inicio</span>
         </Link>
       </div>
 
@@ -115,17 +147,19 @@ export function Sidebar() {
             <X className="w-5 h-5" />
           </button>
         </div>
-      <div className="p-6 border-b border-gray-100">
-        <Link 
-          href="/" 
-          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 rounded-xl font-medium transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Regresar al Menú
-        </Link>
-      </div>
 
-      <nav className="flex-1 p-4 space-y-2">
+        {/* Sidebar Header (Logo) */}
+        <div className="p-4 border-b border-gray-100 flex flex-col gap-4">
+          <div className="flex items-center justify-center pt-2">
+            <img 
+              src="/logo.png" 
+              alt="DICAR LOGISTIC" 
+              className="w-40 object-contain"
+            />
+          </div>
+        </div>
+
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {routes.map((route) => {
           const isActive = pathname === route.path || (route.path !== "/" && pathname.startsWith(route.path) && route.path !== "/mantenimiento");
           // Pequeño ajuste para que /mantenimiento no marque activo si estamos en /mantenimiento/nuevo
