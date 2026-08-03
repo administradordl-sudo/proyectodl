@@ -24,6 +24,23 @@ export default function EmployeeRequestsPage() {
 
   useEffect(() => {
     fetchPermisos();
+    
+    const channel = supabase
+      .channel('realtime-requests')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'permisos' }, (payload) => {
+        setPermisos(prev => {
+          if (prev.find(p => p.id === payload.new.id)) return prev;
+          return [payload.new as Permiso, ...prev];
+        });
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'permisos' }, (payload) => {
+        setPermisos(prev => prev.map(p => p.id === payload.new.id ? { ...p, ...(payload.new as Permiso) } : p));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchPermisos = async () => {
@@ -91,9 +108,9 @@ export default function EmployeeRequestsPage() {
         </div>
         <button
           onClick={() => setIsAdding(!isAdding)}
-          className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+          className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors whitespace-nowrap text-sm"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
           Nueva Solicitud
         </button>
       </div>
@@ -104,7 +121,7 @@ export default function EmployeeRequestsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8"
         >
-          <form onSubmit={handleAdd} className="flex gap-4 items-end">
+          <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
             <div className="flex-1 space-y-2">
               <label className="text-sm font-medium text-gray-700">Trabajador (Test)</label>
               <input
@@ -144,14 +161,14 @@ export default function EmployeeRequestsPage() {
         </motion.div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto w-full">
+        <table className="w-full min-w-[600px] text-left border-collapse text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="px-6 py-4 font-medium text-gray-500 w-48">Fecha</th>
-              <th className="px-6 py-4 font-medium text-gray-500">Trabajador</th>
-              <th className="px-6 py-4 font-medium text-gray-500">Motivo</th>
-              <th className="px-6 py-4 font-medium text-gray-500 w-40 text-right">Estado</th>
+              <th className="px-4 py-3 font-medium text-gray-500 whitespace-nowrap w-32">Fecha</th>
+              <th className="px-4 py-3 font-medium text-gray-500">Trabajador</th>
+              <th className="px-4 py-3 font-medium text-gray-500">Motivo</th>
+              <th className="px-4 py-3 font-medium text-gray-500 w-40 text-right">Estado</th>
             </tr>
           </thead>
           <tbody>
@@ -169,12 +186,12 @@ export default function EmployeeRequestsPage() {
             ) : (
               permisos.map((permiso) => (
                 <tr key={permiso.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4 font-medium text-gray-900">{permiso.fecha_permiso}</td>
-                  <td className="px-6 py-4 text-gray-800">{permiso.nombre_trabajador}</td>
-                  <td className="px-6 py-4 text-gray-600">{permiso.motivo}</td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{permiso.fecha_permiso}</td>
+                  <td className="px-4 py-3 text-gray-800">{permiso.nombre_trabajador}</td>
+                  <td className="px-4 py-3 text-gray-600">{permiso.motivo}</td>
+                  <td className="px-4 py-3 text-right">
                     <div className={clsx(
-                      "inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-sm font-medium",
+                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium",
                       getStatusBadge(permiso.estado)
                     )}>
                       {getStatusIcon(permiso.estado)}

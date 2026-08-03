@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ArrowLeft, Send, Loader2, User, Clock, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react';
@@ -33,6 +33,60 @@ type TicketDetalle = {
 
 export default function TicketDetail({ ticket }: { ticket: TicketDetalle }) {
   const [estado, setEstado] = useState(ticket.estado);
+  const [comentarios, setComentarios] = useState<Comentario[]>(ticket.comentarios);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Sincronizar si Next.js revalida los datos del servidor
+  useEffect(() => {
+    setComentarios(ticket.comentarios);
+  }, [ticket.comentarios]);
+
+  // Suscripción Realtime
+  useEffect(() => {
+    // Escuchar nuevos comentarios
+    const comentariosChannel = supabase
+      .channel('realtime-comentarios')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'ticket_comentarios', filter: `ticket_id=eq.${ticket.id}` },
+        (payload) => {
+          const nuevo = payload.new as Comentario;
+          setComentarios((prev) => {
+            if (prev.find(c => c.id === nuevo.id)) return prev;
+            return [...prev, nuevo];
+          });
+        }
+      )
+      .subscribe();
+
+    // Escuchar cambios de estado en el ticket principal
+    const ticketChannel = supabase
+      .channel('realtime-ticket')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tickets_mantenimiento', filter: `id=eq.${ticket.id}` },
+        (payload) => {
+          const ticketActualizado = payload.new as TicketDetalle;
+          if (ticketActualizado.estado) {
+            setEstado(ticketActualizado.estado);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(comentariosChannel);
+      supabase.removeChannel(ticketChannel);
+    };
+  }, [ticket.id]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [comentarios]);
   const [comentario, setComentario] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -98,10 +152,18 @@ export default function TicketDetail({ ticket }: { ticket: TicketDetalle }) {
       
       {/* Columna Izquierda: Detalles del Ticket */}
       <div className="w-full md:w-1/3 space-y-6">
-        <Link href="/mantenimiento" className="inline-flex items-center text-gray-500 hover:text-gray-900 transition-colors bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200 text-sm font-medium">
+        <Link href="/mantenimiento" className="hidden md:inline-flex items-center text-gray-500 hover:text-gray-900 transition-colors bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200 text-sm font-medium">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Volver al Panel
         </Link>
+        
+        {/* Botón flotante Volver (Mobile) */}
+        <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <Link href="/mantenimiento" className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-full shadow-2xl hover:bg-gray-800 active:scale-95 transition-all font-medium text-sm border border-gray-700 whitespace-nowrap">
+            <ArrowLeft className="w-4 h-4" />
+            Volver al Panel
+          </Link>
+        </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex justify-between items-start mb-4">
@@ -133,6 +195,10 @@ export default function TicketDetail({ ticket }: { ticket: TicketDetalle }) {
               <div>
                 <span className="block text-gray-500 text-xs uppercase tracking-wider mb-1">Fecha Reporte</span>
                 <span className="font-medium text-gray-900">{format(new Date(ticket.created_at), "dd MMM yyyy", { locale: es })}</span>
+              </div>
+              <div>
+                <span className="block text-gray-500 text-xs uppercase tracking-wider mb-1">Creado por</span>
+                <span className="font-medium text-gray-900">Usuario Administrador</span>
               </div>
             </div>
 
@@ -167,7 +233,7 @@ export default function TicketDetail({ ticket }: { ticket: TicketDetalle }) {
       </div>
 
       {/* Columna Derecha: Comentarios / Hilo */}
-      <div className="w-full md:w-2/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col h-[75vh]">
+      <div className="w-full md:w-2/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col h-[60vh] md:h-[75vh] min-h-[500px]">
         <div className="p-4 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">
           <h3 className="font-semibold text-gray-800 flex items-center gap-2">
             Historial y Actualizaciones
@@ -175,14 +241,14 @@ export default function TicketDetail({ ticket }: { ticket: TicketDetalle }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30">
-          {ticket.comentarios.length === 0 ? (
+          {comentarios.length === 0 ? (
             <div className="text-center text-gray-400 py-10 flex flex-col items-center">
               <CheckCircle className="w-12 h-12 mb-3 text-gray-300" />
               <p>No hay comentarios aún.</p>
               <p className="text-sm mt-1">Sé el primero en actualizar el estado de este ticket.</p>
             </div>
           ) : (
-            ticket.comentarios.map((com) => {
+            comentarios.map((com) => {
               const isSystem = com.nombre_usuario === 'Sistema';
               return (
                 <div key={com.id} className={`flex gap-4 ${isSystem ? 'justify-center' : ''}`}>
@@ -224,6 +290,7 @@ export default function TicketDetail({ ticket }: { ticket: TicketDetalle }) {
               );
             })
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         <div className="p-4 bg-white border-t border-gray-200 rounded-b-xl">

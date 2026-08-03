@@ -19,6 +19,31 @@ export default function ApprovalsPage() {
 
   useEffect(() => {
     fetchPendientes();
+    
+    const channel = supabase
+      .channel('realtime-approvals')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'permisos' }, (payload) => {
+        const nuevo = payload.new as Permiso;
+        if (nuevo.estado === 'PENDIENTE') {
+          setPendientes(prev => {
+            if (prev.find(p => p.id === nuevo.id)) return prev;
+            return [...prev, nuevo];
+          });
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'permisos' }, (payload) => {
+        const updated = payload.new as Permiso;
+        if (updated.estado !== 'PENDIENTE') {
+          setPendientes(prev => prev.filter(p => p.id !== updated.id));
+        } else {
+          setPendientes(prev => prev.map(p => p.id === updated.id ? updated : p));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchPendientes = async () => {

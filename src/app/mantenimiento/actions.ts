@@ -140,7 +140,7 @@ export async function updateTicketStatus(ticketId: string, nuevoEstado: string) 
       .insert([
         {
           ticket_id: ticketId,
-          comentario: `El estado del ticket ha sido actualizado a: **${nuevoEstado}**`,
+          comentario: `El estado del ticket ha sido actualizado a: **${nuevoEstado}** - por Usuario Administrador`,
           nombre_usuario: 'Sistema'
         }
       ]);

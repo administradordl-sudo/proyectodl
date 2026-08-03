@@ -14,9 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className="antialiased bg-gray-50 text-slate-900 flex min-h-screen">
+      <body className="antialiased bg-gray-50 text-slate-900 flex flex-col md:flex-row min-h-screen">
         <Sidebar />
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto w-full max-w-full">
           {children}
         </main>
       </body>

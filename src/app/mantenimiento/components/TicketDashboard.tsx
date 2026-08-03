@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Filter, AlertCircle, Clock, CheckCircle, Search, Plus } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 type Ticket = {
   id: string;
@@ -30,6 +31,33 @@ export default function TicketDashboard({ initialTickets }: TicketDashboardProps
   const currentEstado = searchParams.get('estado') || '';
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
+
+  useEffect(() => {
+    setTickets(initialTickets);
+  }, [initialTickets]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('realtime-tickets-list')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tickets_mantenimiento' }, (payload) => {
+        setTickets(prev => {
+          if (prev.find(t => t.id === payload.new.id)) return prev;
+          return [payload.new as Ticket, ...prev];
+        });
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tickets_mantenimiento' }, (payload) => {
+        setTickets(prev => prev.map(t => t.id === payload.new.id ? { ...t, ...(payload.new as Ticket) } : t));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tickets_mantenimiento' }, (payload) => {
+        setTickets(prev => prev.filter(t => t.id !== payload.old.id));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Handle server-side filter changes
   const updateFilters = (key: string, value: string) => {
@@ -43,7 +71,7 @@ export default function TicketDashboard({ initialTickets }: TicketDashboardProps
   };
 
   // Client-side search (for text search within fetched results)
-  const filteredTickets = initialTickets.filter(ticket => {
+  const filteredTickets = tickets.filter(ticket => {
     return searchTerm 
       ? ticket.titulo.toLowerCase().includes(searchTerm.toLowerCase()) || 
         ticket.ubicacion.toLowerCase().includes(searchTerm.toLowerCase())
@@ -81,20 +109,20 @@ export default function TicketDashboard({ initialTickets }: TicketDashboardProps
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden w-full">
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+      <div className="p-4 md:p-6 border-b border-gray-200">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <h2 className="text-xl font-bold text-gray-800">Tickets de Mantenimiento</h2>
             <Link 
               href="/mantenimiento/nuevo"
-              className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+              className="inline-flex items-center px-3 py-1.5 md:px-4 md:py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 whitespace-nowrap"
             >
               <Plus className="w-4 h-4 mr-1" />
               Nuevo Ticket
             </Link>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col lg:flex-row gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input 
@@ -102,16 +130,18 @@ export default function TicketDashboard({ initialTickets }: TicketDashboardProps
                 placeholder="Buscar en resultados..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-64"
+                className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full lg:w-64"
               />
             </div>
             
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
+            <div className="flex flex-col sm:flex-row items-stretch gap-2">
+              <div className="hidden sm:flex items-center justify-center">
+                <Filter className="h-4 w-4 text-gray-500 mx-1" />
+              </div>
               <select 
                 value={currentCategoria}
                 onChange={(e) => updateFilters('categoria', e.target.value)}
-                className="py-2 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                className="py-2 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white w-full sm:w-auto"
               >
                 <option value="">Todas las Categorías</option>
                 <option value="Infraestructura">Infraestructura</option>
@@ -124,7 +154,7 @@ export default function TicketDashboard({ initialTickets }: TicketDashboardProps
               <select 
                 value={currentEstado}
                 onChange={(e) => updateFilters('estado', e.target.value)}
-                className="py-2 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                className="py-2 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white w-full sm:w-auto"
               >
                 <option value="">Todos los Estados</option>
                 <option value="Pendiente">Pendiente</option>
@@ -138,14 +168,14 @@ export default function TicketDashboard({ initialTickets }: TicketDashboardProps
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left text-gray-500">
+        <table className="w-full min-w-[800px] text-sm text-left text-gray-500">
           <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
             <tr>
-              <th scope="col" className="px-6 py-3 font-semibold">Ticket</th>
-              <th scope="col" className="px-6 py-3 font-semibold">Categoría / Ubicación</th>
-              <th scope="col" className="px-6 py-3 font-semibold text-center">Prioridad</th>
-              <th scope="col" className="px-6 py-3 font-semibold text-center">Estado</th>
-              <th scope="col" className="px-6 py-3 font-semibold">Fecha</th>
+              <th scope="col" className="px-4 py-3 font-semibold whitespace-nowrap">Ticket</th>
+              <th scope="col" className="px-4 py-3 font-semibold">Categoría / Ubicación</th>
+              <th scope="col" className="px-4 py-3 font-semibold text-center whitespace-nowrap">Prioridad</th>
+              <th scope="col" className="px-4 py-3 font-semibold text-center whitespace-nowrap">Estado</th>
+              <th scope="col" className="px-4 py-3 font-semibold whitespace-nowrap">Fecha</th>
             </tr>
           </thead>
           <tbody>
@@ -156,7 +186,7 @@ export default function TicketDashboard({ initialTickets }: TicketDashboardProps
                   onClick={() => router.push(`/mantenimiento/${ticket.id}`)}
                   className="bg-white border-b hover:bg-blue-50/50 transition-colors cursor-pointer"
                 >
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3">
                     <div className="font-medium text-gray-900 line-clamp-1" title={ticket.titulo}>{ticket.titulo}</div>
                     {ticket.placa_vehiculo && (
                       <div className="text-xs text-blue-600 mt-1 font-mono bg-blue-50 inline-block px-1 rounded">
@@ -164,18 +194,18 @@ export default function TicketDashboard({ initialTickets }: TicketDashboardProps
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3">
                     <div className="text-gray-900">{ticket.categoria}</div>
                     <div className="text-xs text-gray-500 mt-1">{ticket.ubicacion}</div>
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-4 py-3 text-center">
                     {getPriorityBadge(ticket.prioridad)}
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-4 py-3 text-center">
                     {getStatusBadge(ticket.estado)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {format(new Date(ticket.created_at), "dd MMM yyyy, HH:mm", { locale: es })}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {format(new Date(ticket.created_at), "dd MMM yyyy", { locale: es })}
                   </td>
                 </tr>
               ))
