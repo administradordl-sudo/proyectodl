@@ -30,10 +30,10 @@ export async function POST(request: Request) {
         .join(' ');
     };
 
-    const empleadosMap = new Map<string, any>();
+    const empleadosMap = new Map<string, string>();
     empleadosData?.forEach(e => {
-      empleadosMap.set(normalizeName(`${e.nombres} ${e.apellidos}`), e);
-      empleadosMap.set(normalizeName(`${e.apellidos} ${e.nombres}`), e);
+      empleadosMap.set(normalizeName(`${e.nombres} ${e.apellidos}`), e.id);
+      empleadosMap.set(normalizeName(`${e.apellidos} ${e.nombres}`), e.id);
     });
 
     const feriadosMap = new Set<string>();
@@ -77,7 +77,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `No se encontraron las columnas necesarias en el Excel.` }, { status: 400 });
     }
 
-    // Combine OBSERVACIONES/OBSERVACION
     const obsCol = colMap['OBSERVACIONES'] || colMap['OBSERVACION'];
 
     // Helper: convert time value to minutes
@@ -94,6 +93,23 @@ export async function POST(request: Request) {
       }
       return 0;
     };
+    
+    // Helper to extract Time string
+    const getTimeString = (val: any): string | null => {
+      if (val === null || val === undefined) return null;
+      if (val instanceof Date) return `${val.getHours().toString().padStart(2, '0')}:${val.getMinutes().toString().padStart(2, '0')}:00`;
+      if (typeof val === 'number') {
+        const mins = Math.round(val * 24 * 60);
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:00`;
+      }
+      if (typeof val === 'string') {
+        const match = val.match(/\d{2}:\d{2}/);
+        if (match) return match[0] + ":00";
+      }
+      return null;
+    }
 
     const parseFecha = (cell: ExcelJS.Cell): string => {
       if (cell.value instanceof Date) return format(cell.value, 'yyyy-MM-dd');
@@ -107,20 +123,8 @@ export async function POST(request: Request) {
       return '';
     };
 
-    // Data structures for KPIs
-    type EmployeeStats = {
-      nombre: string;
-      sede: string;
-      area: string;
-      tardanzasMins: number;
-      faltasDias: number;
-      horasExtraMins: number;
-    };
-
-    const statsMap = new Map<string, EmployeeStats>();
-    const faltasPorDia = new Map<string, number>();
-
     const rowCount = worksheet.rowCount;
+    const asistenciasToUpsert: any[] = [];
     
     for (let r = headerRowIndex + 1; r <= rowCount; r++) {
       const row = worksheet.getRow(r);
@@ -129,110 +133,67 @@ export async function POST(request: Request) {
 
       const normName = normalizeName(nombreRaw);
       const fechaStr = parseFecha(row.getCell(colMap['FECHA']));
+      if (!fechaStr) continue;
+
       const observacion = row.getCell(obsCol)?.value?.toString().toLowerCase() || '';
-      
       const horarioCell = colMap['HORARIO'] ? row.getCell(colMap['HORARIO']).value?.toString().trim() : '';
       const ingresoCell = colMap['HORA INGRESO'] ? row.getCell(colMap['HORA INGRESO']).value : null;
-      
       const extraMins = colMap['HORA EXTRA'] ? getMinsFromCell(row.getCell(colMap['HORA EXTRA']).value) : 0;
 
-      // Ensure employee exists in stats map
-      if (!statsMap.has(normName)) {
-        const emp = empleadosMap.get(normName);
-        statsMap.set(normName, {
-          nombre: emp ? `${emp.nombres} ${emp.apellidos}` : nombreRaw, // Use original if not found
-          sede: emp?.sede || 'Desconocida',
-          area: emp?.area || 'Desconocida',
-          tardanzasMins: 0,
-          faltasDias: 0,
-          horasExtraMins: 0
-        });
-      }
+      const empleadoId = empleadosMap.get(normName) || null;
       
-      const stats = statsMap.get(normName)!;
-      stats.horasExtraMins += extraMins;
+      let faltasDias = 0;
+      let tardanzasMins = 0;
 
-      // Check justification (feriado or permiso)
       const isJustified = feriadosMap.has(fechaStr) || permisosMap.has(`${normName}_${fechaStr}`);
 
       if (!isJustified) {
-        // 1. Falta
         if (observacion.includes('falta')) {
-          stats.faltasDias += 1;
-          
-          // Add to daily absences chart
-          const diaSemana = new Date(fechaStr).toLocaleDateString('es-ES', { weekday: 'long', timeZone: 'UTC' });
-          faltasPorDia.set(diaSemana, (faltasPorDia.get(diaSemana) || 0) + 1);
-        } 
-        // 2. Tardanza
-        else if (horarioCell && ingresoCell !== null && ingresoCell !== undefined) {
-          // Parse horario (e.g. "07:30 - 17:00")
+          faltasDias = 1;
+        } else if (horarioCell && ingresoCell !== null && ingresoCell !== undefined) {
           const parts = horarioCell.split('-');
           if (parts.length >= 1) {
             const expectedStartMins = getMinsFromCell(parts[0]);
             let actualStartMins = getMinsFromCell(ingresoCell);
             
-            // Handle edge case where HORA INGRESO cell returns 0 (which means 00:00) when it was blank or 00:00
-            // In the image, '00:00' was red. If they arrived at 00:00, that's weird. But we get mins.
-            // Actually, if they didn't clock in, it usually says empty or 00:00. But wait, if they didn't clock in, it's a 'falta'. 
-            // We already checked for 'falta'. So this is someone who arrived.
-            
             if (actualStartMins > expectedStartMins) {
-              const delay = actualStartMins - expectedStartMins;
-              stats.tardanzasMins += delay;
+              tardanzasMins = actualStartMins - expectedStartMins;
             }
           }
         }
       }
+
+      asistenciasToUpsert.push({
+        empleado_id: empleadoId,
+        nombre_crudo: normName, // Usamos el normalizado para mantener consistencia
+        fecha: fechaStr,
+        horario: horarioCell || null,
+        hora_ingreso: getTimeString(ingresoCell),
+        minutos_tardanza: tardanzasMins,
+        es_falta: faltasDias > 0,
+        minutos_extra: extraMins,
+        observaciones: observacion
+      });
     }
 
-    // Calculate aggregated KPIs
-    const allEmployees = Array.from(statsMap.values());
-    
-    // Rankings
-    const topTardanzas = [...allEmployees].sort((a, b) => b.tardanzasMins - a.tardanzasMins).slice(0, 5);
-    const topFaltas = [...allEmployees].sort((a, b) => b.faltasDias - a.faltasDias).slice(0, 5);
-    const topHorasExtra = [...allEmployees].sort((a, b) => b.horasExtraMins - a.horasExtraMins).slice(0, 5);
-
-    // Group by Area
-    const areaStats = new Map<string, { faltas: number, tardanzas: number }>();
-    allEmployees.forEach(e => {
-      const current = areaStats.get(e.area) || { faltas: 0, tardanzas: 0 };
-      current.faltas += e.faltasDias;
-      current.tardanzas += e.tardanzasMins;
-      areaStats.set(e.area, current);
-    });
-
-    const topAreasFaltas = Array.from(areaStats.entries())
-      .map(([area, faltas, tardanzas]) => ({ area, faltas: areaStats.get(area)!.faltas }))
-      .sort((a, b) => b.faltas - a.faltas)
-      .slice(0, 5);
-
-    const topAreasTardanzas = Array.from(areaStats.entries())
-      .map(([area, faltas, tardanzas]) => ({ area, tardanzas: areaStats.get(area)!.tardanzas }))
-      .sort((a, b) => b.tardanzas - a.tardanzas)
-      .slice(0, 5);
-      
-    const diasFaltasArr = Array.from(faltasPorDia.entries())
-      .map(([dia, count]) => ({ dia: dia.charAt(0).toUpperCase() + dia.slice(1), count }))
-      .sort((a, b) => b.count - a.count);
-
-    return NextResponse.json({
-      topTardanzas: topTardanzas.filter(e => e.tardanzasMins > 0),
-      topFaltas: topFaltas.filter(e => e.faltasDias > 0),
-      topHorasExtra: topHorasExtra.filter(e => e.horasExtraMins > 0),
-      topAreasFaltas: topAreasFaltas.filter(a => a.faltas > 0),
-      topAreasTardanzas: topAreasTardanzas.filter(a => a.tardanzas > 0),
-      diasFaltas: diasFaltasArr,
-      resumen: {
-        totalFaltas: allEmployees.reduce((acc, e) => acc + e.faltasDias, 0),
-        totalTardanzasHoras: Math.round(allEmployees.reduce((acc, e) => acc + e.tardanzasMins, 0) / 60),
-        totalExtrasHoras: Math.round(allEmployees.reduce((acc, e) => acc + e.horasExtraMins, 0) / 60)
+    // 4. Upsert into Supabase in chunks
+    const chunkSize = 1000;
+    for (let i = 0; i < asistenciasToUpsert.length; i += chunkSize) {
+      const chunk = asistenciasToUpsert.slice(i, i + chunkSize);
+      const { error } = await supabase
+        .from('asistencias')
+        .upsert(chunk, { onConflict: 'nombre_crudo, fecha' });
+        
+      if (error) {
+        console.error('Supabase Upsert Error:', error);
+        throw error;
       }
-    }, { status: 200 });
+    }
+
+    return NextResponse.json({ success: true, count: asistenciasToUpsert.length }, { status: 200 });
 
   } catch (error: any) {
     console.error('Error processing KPIs:', error);
-    return NextResponse.json({ error: error.message || 'Error al procesar KPIs' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Error al guardar los registros en BD' }, { status: 500 });
   }
 }
