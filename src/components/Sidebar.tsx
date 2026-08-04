@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree } from "lucide-react";
+import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree, HeartPulse, ShieldCheck, FileBadge } from "lucide-react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -59,6 +59,24 @@ const mantenimientoRoutes = [
   },
 ];
 
+const sstRoutes = [
+  {
+    name: "Registro EMO",
+    path: "/sst/emo",
+    icon: HeartPulse,
+  },
+  {
+    name: "Registro EPP",
+    path: "/sst/epp",
+    icon: ShieldCheck,
+  },
+  {
+    name: "Carnets de Sanidad",
+    path: "/sst/carnets",
+    icon: FileBadge,
+  },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -71,7 +89,8 @@ export function Sidebar() {
   if (pathname === "/") return null;
 
   const isMantenimiento = pathname.startsWith("/mantenimiento");
-  const routes = isMantenimiento ? mantenimientoRoutes : hrRoutes;
+  const isSST = pathname.startsWith("/sst");
+  const routes = isMantenimiento ? mantenimientoRoutes : isSST ? sstRoutes : hrRoutes;
 
   return (
     <>
