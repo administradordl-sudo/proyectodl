@@ -42,7 +42,7 @@ export default function EPPPage() {
 
   const [formData, setFormData] = useState({
     empleado_id: "",
-    fecha_entrega: "",
+    fecha_entrega: new Date().toISOString().split('T')[0],
     equipo: "",
     talla_calzado: "",
     talla_chaleco: "",
@@ -132,7 +132,7 @@ export default function EPPPage() {
       setOtrosEquipos("");
       setFormData({
         empleado_id: "",
-        fecha_entrega: "",
+        fecha_entrega: new Date().toISOString().split('T')[0],
         equipo: "",
         talla_calzado: "",
         talla_chaleco: "",
@@ -242,6 +242,7 @@ export default function EPPPage() {
                                 onChange={(e) => {
                                   if (e.target.checked) {
                                     setEquiposSeleccionados([...equiposSeleccionados, eq]);
+                                    if (eq === "Casco") setFormData(prev => ({...prev, talla_casco: "Estándar"}));
                                   } else {
                                     setEquiposSeleccionados(equiposSeleccionados.filter(item => item !== eq));
                                     // Limpiar la talla si se desmarca
@@ -270,32 +271,39 @@ export default function EPPPage() {
                     <div className="grid grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Talla Calzado {equiposSeleccionados.includes("Botas") && <span className="text-emerald-500">*</span>}</label>
-                        <input
-                          type="text"
-                          placeholder="Ej. 42"
+                        <select
                           disabled={!equiposSeleccionados.includes("Botas")}
                           required={equiposSeleccionados.includes("Botas")}
                           value={formData.talla_calzado}
                           onChange={e => setFormData({ ...formData, talla_calzado: e.target.value })}
                           className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
-                        />
+                        >
+                          <option value="">Seleccione...</option>
+                          {Array.from({ length: 48 - 32 + 1 }, (_, i) => i + 32).map(size => (
+                            <option key={size} value={size.toString()}>{size}</option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Talla Chaleco {equiposSeleccionados.includes("Chaleco") && <span className="text-emerald-500">*</span>}</label>
-                        <input
-                          type="text"
-                          placeholder="Ej. M, L"
+                        <select
                           disabled={!equiposSeleccionados.includes("Chaleco")}
                           required={equiposSeleccionados.includes("Chaleco")}
                           value={formData.talla_chaleco}
                           onChange={e => setFormData({ ...formData, talla_chaleco: e.target.value })}
                           className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
-                        />
+                        >
+                          <option value="">Seleccione...</option>
+                          {["XS", "S", "M", "L", "XL"].map(size => (
+                            <option key={size} value={size}>{size}</option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Talla Casco {equiposSeleccionados.includes("Casco") && <span className="text-emerald-500">*</span>}</label>
                         <input
                           type="text"
+                          readOnly
                           placeholder="Ej. Estándar"
                           disabled={!equiposSeleccionados.includes("Casco")}
                           required={equiposSeleccionados.includes("Casco")}
