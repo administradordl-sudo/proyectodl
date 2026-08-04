@@ -1187,7 +1187,8 @@ export default function EmployeesPage() {
                       estado_civil: selectedEmpleado.estado_civil || "",
                       correo_personal: selectedEmpleado.correo_personal || "",
                       entidad_bancaria: selectedEmpleado.entidad_bancaria || "",
-                      tipo_cuenta: selectedEmpleado.tipo_cuenta || ""
+                      tipo_cuenta: selectedEmpleado.tipo_cuenta || "",
+                      fecha_cese: selectedEmpleado.fecha_cese || ""
                     });
                     setEditingId(selectedEmpleado.id);
                     setSelectedEmpleado(null);
