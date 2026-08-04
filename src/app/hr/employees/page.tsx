@@ -305,9 +305,12 @@ export default function EmployeesPage() {
 
   const [sedesOptions, setSedesOptions] = useState<{value: string, label: string}[]>([]);
   const [bancosOptions, setBancosOptions] = useState<{value: string, label: string}[]>([]);
+  const [puestosOptions, setPuestosOptions] = useState<{value: string, label: string}[]>([]);
+  const [areasOptions, setAreasOptions] = useState<{value: string, label: string}[]>([]);
+  const [distritosOptions, setDistritosOptions] = useState<{value: string, label: string}[]>([]);
 
   // Estados para modales de añadir opciones
-  const [addOptionModal, setAddOptionModal] = useState<{ type: 'sede' | 'banco' | null, title: string }>({ type: null, title: '' });
+  const [addOptionModal, setAddOptionModal] = useState<{ type: 'sede' | 'banco' | 'puesto' | 'area' | 'distrito' | null, title: string }>({ type: null, title: '' });
   const [newOptionValue, setNewOptionValue] = useState("");
   const [isAddingOptionLoading, setIsAddingOptionLoading] = useState(false);
 
@@ -321,7 +324,7 @@ export default function EmployeesPage() {
     try {
       if (addOptionModal.type === 'sede') {
         const { error } = await supabase.from('config_sedes').insert([{ nombre: newValue }]);
-        if (error && error.code !== '23505') throw error; // Ignorar si ya existe
+        if (error && error.code !== '23505') throw error; 
         setSedesOptions(prev => {
           if (prev.find(o => o.value === newValue)) return prev;
           return [...prev, { value: newValue, label: newValue }];
@@ -329,12 +332,36 @@ export default function EmployeesPage() {
         setFormData(prev => ({ ...prev, sede: newValue }));
       } else if (addOptionModal.type === 'banco') {
         const { error } = await supabase.from('config_bancos').insert([{ nombre: newValue }]);
-        if (error && error.code !== '23505') throw error; // Ignorar si ya existe
+        if (error && error.code !== '23505') throw error; 
         setBancosOptions(prev => {
           if (prev.find(o => o.value === newValue)) return prev;
           return [...prev, { value: newValue, label: newValue }];
         });
         setFormData(prev => ({ ...prev, entidad_bancaria: newValue }));
+      } else if (addOptionModal.type === 'puesto') {
+        const { error } = await supabase.from('config_puestos').insert([{ nombre: newValue }]);
+        if (error && error.code !== '23505') throw error; 
+        setPuestosOptions(prev => {
+          if (prev.find(o => o.value === newValue)) return prev;
+          return [...prev, { value: newValue, label: newValue }];
+        });
+        setFormData(prev => ({ ...prev, puesto: newValue }));
+      } else if (addOptionModal.type === 'area') {
+        const { error } = await supabase.from('config_areas').insert([{ nombre: newValue }]);
+        if (error && error.code !== '23505') throw error; 
+        setAreasOptions(prev => {
+          if (prev.find(o => o.value === newValue)) return prev;
+          return [...prev, { value: newValue, label: newValue }];
+        });
+        setFormData(prev => ({ ...prev, area: newValue }));
+      } else if (addOptionModal.type === 'distrito') {
+        const { error } = await supabase.from('config_distritos').insert([{ nombre: newValue }]);
+        if (error && error.code !== '23505') throw error; 
+        setDistritosOptions(prev => {
+          if (prev.find(o => o.value === newValue)) return prev;
+          return [...prev, { value: newValue, label: newValue }];
+        });
+        setFormData(prev => ({ ...prev, distrito: newValue }));
       }
       setAddOptionModal({ type: null, title: '' });
       setNewOptionValue("");
@@ -346,7 +373,7 @@ export default function EmployeesPage() {
     }
   };
 
-  const handleDeleteOption = async (type: 'sede' | 'banco', value: string) => {
+  const handleDeleteOption = async (type: 'sede' | 'banco' | 'puesto' | 'area' | 'distrito', value: string) => {
     if (!confirm(`¿Estás seguro de eliminar "${value}"?`)) return;
     
     try {
@@ -354,10 +381,22 @@ export default function EmployeesPage() {
         const { error } = await supabase.from('config_sedes').delete().eq('nombre', value);
         if (error) throw error;
         setSedesOptions(prev => prev.filter(o => o.value !== value));
-      } else {
+      } else if (type === 'banco') {
         const { error } = await supabase.from('config_bancos').delete().eq('nombre', value);
         if (error) throw error;
         setBancosOptions(prev => prev.filter(o => o.value !== value));
+      } else if (type === 'puesto') {
+        const { error } = await supabase.from('config_puestos').delete().eq('nombre', value);
+        if (error) throw error;
+        setPuestosOptions(prev => prev.filter(o => o.value !== value));
+      } else if (type === 'area') {
+        const { error } = await supabase.from('config_areas').delete().eq('nombre', value);
+        if (error) throw error;
+        setAreasOptions(prev => prev.filter(o => o.value !== value));
+      } else if (type === 'distrito') {
+        const { error } = await supabase.from('config_distritos').delete().eq('nombre', value);
+        if (error) throw error;
+        setDistritosOptions(prev => prev.filter(o => o.value !== value));
       }
     } catch (error) {
       console.error("Error al eliminar opción:", error);
@@ -403,17 +442,19 @@ export default function EmployeesPage() {
 
   const fetchOptions = async () => {
     try {
-      const [sedesRes, bancosRes] = await Promise.all([
+      const [sedesRes, bancosRes, puestosRes, areasRes, distritosRes] = await Promise.all([
         supabase.from('config_sedes').select('nombre').order('nombre'),
-        supabase.from('config_bancos').select('nombre').order('nombre')
+        supabase.from('config_bancos').select('nombre').order('nombre'),
+        supabase.from('config_puestos').select('nombre').order('nombre'),
+        supabase.from('config_areas').select('nombre').order('nombre'),
+        supabase.from('config_distritos').select('nombre').order('nombre')
       ]);
       
-      if (sedesRes.data) {
-        setSedesOptions(sedesRes.data.map(s => ({ value: s.nombre, label: s.nombre })));
-      }
-      if (bancosRes.data) {
-        setBancosOptions(bancosRes.data.map(b => ({ value: b.nombre, label: b.nombre })));
-      }
+      if (sedesRes.data) setSedesOptions(sedesRes.data.map(s => ({ value: s.nombre, label: s.nombre })));
+      if (bancosRes.data) setBancosOptions(bancosRes.data.map(b => ({ value: b.nombre, label: b.nombre })));
+      if (puestosRes.data) setPuestosOptions(puestosRes.data.map(p => ({ value: p.nombre, label: p.nombre })));
+      if (areasRes.data) setAreasOptions(areasRes.data.map(a => ({ value: a.nombre, label: a.nombre })));
+      if (distritosRes.data) setDistritosOptions(distritosRes.data.map(d => ({ value: d.nombre, label: d.nombre })));
     } catch (error) {
       console.error("Error fetching options", error);
     }
@@ -676,7 +717,23 @@ export default function EmployeesPage() {
                       <div><label className="block text-xs font-medium text-gray-600 mb-1">Correo Personal</label><input type="email" name="correo_personal" value={formData.correo_personal || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
                       <div><label className="block text-xs font-medium text-gray-600 mb-1">Teléfono Personal</label><input name="telefono" value={formData.telefono || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
                       <div className="sm:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1">Dirección</label><input name="direccion" value={formData.direccion || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
-                      <div><label className="block text-xs font-medium text-gray-600 mb-1">Distrito</label><input name="distrito" value={formData.distrito || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Distrito</label>
+                        <Select 
+                          name="distrito" 
+                          value={formData.distrito} 
+                          onChange={handleChange} 
+                          options={Array.from(new Set([...distritosOptions.map(o => o.value), ...uniqueOptions.distrito])).sort().map(v => ({ value: v, label: v }))}
+                          placeholder="Seleccionar..."
+                          triggerClassName="w-full px-3 py-2 border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500 bg-white" 
+                          actionLabel="Añadir Distrito"
+                          onActionClick={() => {
+                            setAddOptionModal({ type: 'distrito', title: 'Añadir Nuevo Distrito' });
+                            setNewOptionValue('');
+                          }}
+                          onOptionDelete={(val) => handleDeleteOption('distrito', val)}
+                        />
+                      </div>
                       <div className="sm:col-span-3"><label className="block text-xs font-medium text-gray-600 mb-1">Carrera / Formación</label><input name="carrera" value={formData.carrera || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
                       <div><label className="block text-xs font-medium text-gray-600 mb-1">Talla Chaleco</label><input name="talla_chaleco" value={formData.talla_chaleco || ""} onChange={handleChange} placeholder="Ej. M, L" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
                       <div><label className="block text-xs font-medium text-gray-600 mb-1">Talla Zapato</label><input name="talla_calzado" value={formData.talla_calzado || ""} onChange={handleChange} placeholder="Ej. 42" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
@@ -725,8 +782,42 @@ export default function EmployeesPage() {
                       <div><label className="block text-xs font-medium text-gray-600 mb-1">Inicio de Contrato</label><input type="date" name="fecha_inicio_contrato" value={formData.fecha_inicio_contrato || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
                       <div><label className="block text-xs font-medium text-gray-600 mb-1">Fin de Contrato</label><input type="date" name="fecha_fin_contrato" value={formData.fecha_fin_contrato || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
                       
-                      <div><label className="block text-xs font-medium text-gray-600 mb-1">Puesto *</label><input required name="puesto" value={formData.puesto || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
-                      <div><label className="block text-xs font-medium text-gray-600 mb-1">Área *</label><input required name="area" value={formData.area || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Puesto *</label>
+                        <Select 
+                          required 
+                          name="puesto" 
+                          value={formData.puesto} 
+                          onChange={handleChange} 
+                          options={Array.from(new Set([...puestosOptions.map(o => o.value), ...uniqueOptions.puesto])).sort().map(v => ({ value: v, label: v }))}
+                          placeholder="Seleccionar..."
+                          triggerClassName="w-full px-3 py-2 border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500 bg-white" 
+                          actionLabel="Añadir Puesto"
+                          onActionClick={() => {
+                            setAddOptionModal({ type: 'puesto', title: 'Añadir Nuevo Puesto' });
+                            setNewOptionValue('');
+                          }}
+                          onOptionDelete={(val) => handleDeleteOption('puesto', val)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Área *</label>
+                        <Select 
+                          required 
+                          name="area" 
+                          value={formData.area} 
+                          onChange={handleChange} 
+                          options={Array.from(new Set([...areasOptions.map(o => o.value), ...uniqueAreas.filter(a => a !== "Desconocida")])).sort().map(v => ({ value: v, label: v }))}
+                          placeholder="Seleccionar..."
+                          triggerClassName="w-full px-3 py-2 border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500 bg-white" 
+                          actionLabel="Añadir Área"
+                          onActionClick={() => {
+                            setAddOptionModal({ type: 'area', title: 'Añadir Nueva Área' });
+                            setNewOptionValue('');
+                          }}
+                          onOptionDelete={(val) => handleDeleteOption('area', val)}
+                        />
+                      </div>
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">Sede *</label>
                         <Select 
@@ -854,7 +945,7 @@ export default function EmployeesPage() {
                     autoFocus
                     value={newOptionValue}
                     onChange={(e) => setNewOptionValue(e.target.value)}
-                    placeholder={`Ej. ${addOptionModal.type === 'sede' ? 'Planta Sur' : 'Scotiabank'}`}
+                    placeholder={`Ej. ${addOptionModal.type === 'sede' ? 'Planta Sur' : addOptionModal.type === 'banco' ? 'Scotiabank' : addOptionModal.type === 'puesto' ? 'Analista' : addOptionModal.type === 'area' ? 'Sistemas' : 'Miraflores'}`}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   />
                 </div>
