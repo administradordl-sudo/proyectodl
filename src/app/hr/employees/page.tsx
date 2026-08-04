@@ -108,8 +108,18 @@ export default function EmployeesPage() {
              const date = cell.value as Date;
              return date.toISOString().split('T')[0];
           }
-          
-          let strVal = cell.value?.toString().trim() || '';
+          let strVal = '';
+          if (cell.value && typeof cell.value === 'object') {
+            if ('text' in cell.value) {
+               strVal = (cell.value as any).text?.toString().trim() || '';
+            } else if ('richText' in cell.value) {
+               strVal = (cell.value as any).richText.map((rt: any) => rt.text).join('').trim();
+            } else {
+               strVal = cell.value.toString().trim();
+            }
+          } else {
+            strVal = cell.value?.toString().trim() || '';
+          }
           
           // Convert DD/MM/YYYY strings to YYYY-MM-DD for DB
           if (strVal.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {

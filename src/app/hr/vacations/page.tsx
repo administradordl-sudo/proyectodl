@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Check, X, Clock, User, CalendarDays, Palmtree, Users, History, FileText } from "lucide-react";
+import { Check, X, Clock, User, CalendarDays, Palmtree, Users, History, FileText, CheckCircle2, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 
