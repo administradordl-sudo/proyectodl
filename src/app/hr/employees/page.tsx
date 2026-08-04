@@ -73,8 +73,11 @@ export default function EmployeesPage() {
   const [selectedEmpleado, setSelectedEmpleado] = useState<Empleado | null>(null);
 
   const uniqueAreas = useMemo(() => {
+    const hasDesconocida = empleados.some(e => !e.area || e.area.trim() === "");
     const areas = new Set(empleados.map(e => e.area).filter(Boolean));
-    return Array.from(areas).sort();
+    const result = Array.from(areas).sort();
+    if (hasDesconocida) result.push("Desconocida");
+    return result;
   }, [empleados]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -473,7 +476,11 @@ export default function EmployeesPage() {
     }
 
     if (filterArea !== "Todas") {
-      result = result.filter(e => e.area === filterArea);
+      if (filterArea === "Desconocida") {
+        result = result.filter(e => !e.area || e.area.trim() === "");
+      } else {
+        result = result.filter(e => e.area === filterArea);
+      }
     }
 
     result.sort((a, b) => {
