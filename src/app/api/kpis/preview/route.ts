@@ -115,7 +115,7 @@ export async function POST(request: Request) {
     // Helper: convert time value to minutes
     const getMinsFromCell = (val: any): number | null => {
       if (val === null || val === undefined || val === '') return null;
-      if (val instanceof Date) return val.getHours() * 60 + val.getMinutes();
+      if (val instanceof Date) return val.getUTCHours() * 60 + val.getUTCMinutes();
       if (typeof val === 'number') return Math.round(val * 24 * 60);
       if (typeof val === 'string') {
         const parts = val.trim().split(':');
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
     // Helper to extract Time string
     const getTimeString = (val: any): string | null => {
       if (val === null || val === undefined) return null;
-      if (val instanceof Date) return `${val.getHours().toString().padStart(2, '0')}:${val.getMinutes().toString().padStart(2, '0')}:00`;
+      if (val instanceof Date) return `${val.getUTCHours().toString().padStart(2, '0')}:${val.getUTCMinutes().toString().padStart(2, '0')}:00`;
       if (typeof val === 'number') {
         const mins = Math.round(val * 24 * 60);
         const h = Math.floor(mins / 60);
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
     }
 
     const parseFecha = (cell: ExcelJS.Cell): string => {
-      if (cell.value instanceof Date) return format(cell.value, 'yyyy-MM-dd');
+      if (cell.value instanceof Date) return cell.value.toISOString().split('T')[0];
       if (typeof cell.value === 'string') {
         try {
           return format(parse(cell.value.trim(), 'dd/MM/yyyy', new Date()), 'yyyy-MM-dd');

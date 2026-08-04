@@ -104,7 +104,7 @@ export async function POST(request: Request) {
     // 4. Helper: convert any Excel time value to minutes
     const getMinsFromCell = (val: any): number => {
       if (val === null || val === undefined) return 0;
-      if (val instanceof Date) return val.getHours() * 60 + val.getMinutes();
+      if (val instanceof Date) return val.getUTCHours() * 60 + val.getUTCMinutes();
       if (typeof val === 'number') return Math.round(val * 24 * 60);
       if (typeof val === 'string') {
         const parts = val.trim().split(':');
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
 
     // Helper: parse fecha cell to YYYY-MM-DD string
     const parseFecha = (cell: ExcelJS.Cell): string => {
-      if (cell.value instanceof Date) return format(cell.value, 'yyyy-MM-dd');
+      if (cell.value instanceof Date) return cell.value.toISOString().split('T')[0];
       if (typeof cell.value === 'string') {
         try {
           return format(parse(cell.value.trim(), 'dd/MM/yyyy', new Date()), 'yyyy-MM-dd');
