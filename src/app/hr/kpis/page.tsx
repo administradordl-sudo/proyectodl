@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Upload, FileSpreadsheet, Loader2, AlertCircle, TrendingUp, Clock, AlertTriangle, Building2, Users, Database, CheckCircle2, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, AlertCircle, TrendingUp, Clock, AlertTriangle, Building2, Users, Database, CheckCircle2, ChevronDown, ChevronUp, ShieldCheck, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 
@@ -113,6 +113,7 @@ export default function KpisPage() {
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   
   const [isUploading, setIsUploading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   
@@ -242,6 +243,44 @@ export default function KpisPage() {
       setUploadError(err.message);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const downloadReport = async () => {
+    if (!file) return;
+
+    setIsDownloading(true);
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/reports/process", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Error al generar el reporte procesado");
+      }
+
+      // Download the processed file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Reporte_Procesado_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      
+    } catch (err: any) {
+      setUploadError(err.message);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -483,6 +522,26 @@ export default function KpisPage() {
                       <>
                         <Upload className="w-5 h-5" />
                         Previsualizar Datos
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {previewData && !uploadSuccess && (
+                  <button
+                    disabled={isDownloading}
+                    onClick={downloadReport}
+                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Generando...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-5 h-5" />
+                        Descargar Reporte Procesado
                       </>
                     )}
                   </button>
