@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users } from "lucide-react";
+import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree } from "lucide-react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -28,6 +28,11 @@ const hrRoutes = [
     name: "Gestor Feriados",
     path: "/hr/holidays",
     icon: CalendarDays,
+  },
+  {
+    name: "Gestor Vacaciones",
+    path: "/hr/vacations",
+    icon: Palmtree,
   },
   {
     name: "Dashboard (KPIs)",

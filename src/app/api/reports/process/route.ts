@@ -24,6 +24,8 @@ export async function POST(request: Request) {
       .select('*')
       .eq('estado', 'APROBADO');
 
+    const { data: vacacionesData } = await supabase.from('vacaciones').select('*').eq('estado', 'APROBADO').catch(() => ({ data: [] }));
+
     if (permisosError) throw permisosError;
 
     // Build lookup maps
@@ -46,6 +48,18 @@ export async function POST(request: Request) {
     permisosData?.forEach((p) =>
       permisosMap.set(`${normalizeName(p.nombre_trabajador)}_${p.fecha_permiso}`, p.motivo)
     );
+
+    const vacacionesMap = new Map<string, string>();
+    if (vacacionesData) {
+      vacacionesData.forEach((v: any) => {
+        const start = new Date(v.fecha_inicio);
+        const end = new Date(v.fecha_fin);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = d.toISOString().split('T')[0];
+          vacacionesMap.set(`${normalizeName(v.nombre_trabajador)}_${dateStr}`, v.motivo || 'Vacaciones');
+        }
+      });
+    }
 
     // 2. Read the Excel file
     const arrayBuffer = await file.arrayBuffer();
@@ -153,22 +167,26 @@ export async function POST(request: Request) {
         const nombre   = row.getCell(colMap['NOMBRE']).value?.toString().trim() ?? '';
         const fechaStr = parseFecha(row.getCell(colMap['FECHA']));
         const descCell = row.getCell(colMap['DESCRIPCION']);
+        const observacionActual = descCell.value?.toString() ?? '';
+        const horarioCell = getMinsFromCell(row.getCell(colMap['HORA LABORADA']).value);
 
+        const normName = normalizeName(nombre);
         const labels: string[] = [];
 
         let isForgiven = false;
 
-        // Check feriado
-        if (feriadosMap.has(fechaStr)) {
-          labels.push(`FERIADO: ${feriadosMap.get(fechaStr)}`);
-          isForgiven = true;
-        }
+        const motivoFeriado = feriadosMap.get(fechaStr);
+        const motivoPermiso = permisosMap.get(`${normName}_${fechaStr}`);
+        const motivoVacacion = vacacionesMap.get(`${normName}_${fechaStr}`);
 
-        // Check permiso
-        const normalizedExcelName = normalizeName(nombre);
-        const permisoKey = `${normalizedExcelName}_${fechaStr}`;
-        if (permisosMap.has(permisoKey)) {
-          labels.push(`PERMISO: ${permisosMap.get(permisoKey)}`);
+        if (motivoVacacion) {
+          labels.push(`VACACIONES: ${motivoVacacion}`);
+          isForgiven = true;
+        } else if (motivoFeriado && (observacionActual.includes('FALTA') || !horarioCell)) {
+          labels.push(`FERIADO NACIONAL: ${motivoFeriado}`);
+          isForgiven = true;
+        } else if (motivoPermiso) {
+          labels.push(`PERMISO RRHH: ${motivoPermiso}`);
           isForgiven = true;
         }
 

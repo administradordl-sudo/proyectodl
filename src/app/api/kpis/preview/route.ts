@@ -22,6 +22,7 @@ export async function POST(request: Request) {
 
     const { data: feriadosData } = await supabase.from('feriados').select('*');
     const { data: permisosData } = await supabase.from('permisos').select('*').eq('estado', 'APROBADO');
+    const { data: vacacionesData } = await supabase.from('vacaciones').select('*').eq('estado', 'APROBADO').catch(() => ({ data: [] }));
 
     const normalizeName = (name: string) => {
       if (!name) return '';
@@ -54,6 +55,19 @@ export async function POST(request: Request) {
 
     const permisosMap = new Map<string, string>();
     permisosData?.forEach((p) => permisosMap.set(`${normalizeName(p.nombre_trabajador)}_${p.fecha_permiso}`, p.motivo || 'Permiso Aprobado'));
+
+    const vacacionesMap = new Map<string, string>();
+    if (vacacionesData) {
+      vacacionesData.forEach((v: any) => {
+        const start = new Date(v.fecha_inicio);
+        const end = new Date(v.fecha_fin);
+        // Map all days in between
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = d.toISOString().split('T')[0];
+          vacacionesMap.set(`${normalizeName(v.nombre_trabajador)}_${dateStr}`, v.motivo || 'Vacaciones');
+        }
+      });
+    }
 
     // 2. Read the Excel file
     const arrayBuffer = await file.arrayBuffer();
@@ -148,6 +162,7 @@ export async function POST(request: Request) {
     const tardanzasPreview: any[] = [];
     const permisosPreview: any[] = [];
     const feriadosPreview: any[] = [];
+    const vacacionesPreview: any[] = [];
     
     for (let r = headerRowIndex + 1; r <= rowCount; r++) {
       const row = worksheet.getRow(r);
@@ -171,7 +186,8 @@ export async function POST(request: Request) {
 
       const motivoFeriado = feriadosMap.get(fechaStr);
       const motivoPermiso = permisosMap.get(`${normName}_${fechaStr}`);
-      const isJustified = !!motivoFeriado || !!motivoPermiso;
+      const motivoVacacion = vacacionesMap.get(`${normName}_${fechaStr}`);
+      const isJustified = !!motivoFeriado || !!motivoPermiso || !!motivoVacacion;
 
       if (motivoPermiso && !motivoFeriado) {
         permisosPreview.push({
@@ -181,8 +197,15 @@ export async function POST(request: Request) {
         });
       }
       
+      if (motivoVacacion && !motivoFeriado && !motivoPermiso) {
+        vacacionesPreview.push({
+          nombre: displayName,
+          fecha: fechaStr,
+          motivo: motivoVacacion
+        });
+      }
+
       if (motivoFeriado && (observacion.includes('falta') || !horarioCell)) {
-        // Only track feriado if the employee was absent or didn't punch in, avoiding duplicating it for people who actually worked on a holiday
         feriadosPreview.push({
           nombre: displayName,
           fecha: fechaStr,
@@ -236,6 +259,7 @@ export async function POST(request: Request) {
       tardanzasPreview,
       permisosPreview,
       feriadosPreview,
+      vacacionesPreview,
       asistenciasToUpsert 
     }, { status: 200 });
 
