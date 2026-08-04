@@ -48,6 +48,8 @@ type Empleado = {
   entidad_bancaria?: string;
   tipo_cuenta?: string;
   fecha_cese?: string;
+  talla_chaleco?: string;
+  talla_calzado?: string;
 };
 
 const initialForm = {
@@ -56,7 +58,7 @@ const initialForm = {
   hijos: "", carrera: "", distrito: "", nro_cta: "", tipo_cta: "", afp: "", cuspp: "",
   vida_ley: "No Entregado", sede: "", status: "Activo", fecha_inicio_contrato: "", 
   fecha_fin_contrato: "", estado_civil: "", correo_personal: "", entidad_bancaria: "", 
-  tipo_cuenta: "", fecha_cese: ""
+  tipo_cuenta: "", fecha_cese: "", talla_chaleco: "", talla_calzado: ""
 };
 
 export default function EmployeesPage() {
@@ -194,7 +196,9 @@ export default function EmployeesPage() {
           afp: getVal(25),
           cuspp: getVal(26),
           vida_ley: getVal(27).toLowerCase() === 'verdadero' || getVal(27).toLowerCase() === 'true' ? 'Entregado' : 'No Entregado',
-          sede: getVal(28)
+          sede: getVal(28),
+          talla_chaleco: getVal(29),
+          talla_calzado: getVal(30)
         };
         
         // Remove empty fields to avoid sending empty strings for dates
@@ -275,7 +279,9 @@ export default function EmployeesPage() {
         { header: 'AFP / ONP', width: 20 },
         { header: 'CUSPP', width: 20 },
         { header: 'Vida Ley (Verdadero/Falso)', width: 25 },
-        { header: 'Sede', width: 20 }
+        { header: 'Sede', width: 20 },
+        { header: 'Talla Chaleco', width: 15 },
+        { header: 'Talla Zapato', width: 15 }
       ];
 
       worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -672,6 +678,8 @@ export default function EmployeesPage() {
                       <div className="sm:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1">Dirección</label><input name="direccion" value={formData.direccion || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
                       <div><label className="block text-xs font-medium text-gray-600 mb-1">Distrito</label><input name="distrito" value={formData.distrito || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
                       <div className="sm:col-span-3"><label className="block text-xs font-medium text-gray-600 mb-1">Carrera / Formación</label><input name="carrera" value={formData.carrera || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
+                      <div><label className="block text-xs font-medium text-gray-600 mb-1">Talla Chaleco</label><input name="talla_chaleco" value={formData.talla_chaleco || ""} onChange={handleChange} placeholder="Ej. M, L" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
+                      <div><label className="block text-xs font-medium text-gray-600 mb-1">Talla Zapato</label><input name="talla_calzado" value={formData.talla_calzado || ""} onChange={handleChange} placeholder="Ej. 42" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
                     </div>
                   )}
                 </div>
@@ -1112,6 +1120,8 @@ export default function EmployeesPage() {
                       <div className="grid grid-cols-3"><dt className="text-gray-500">Dirección</dt><dd className="col-span-2 text-gray-900">{selectedEmpleado.direccion || '-'}</dd></div>
                       <div className="grid grid-cols-3"><dt className="text-gray-500">Distrito</dt><dd className="col-span-2 text-gray-900">{selectedEmpleado.distrito || '-'}</dd></div>
                       <div className="grid grid-cols-3"><dt className="text-gray-500">Carrera</dt><dd className="col-span-2 text-gray-900">{selectedEmpleado.carrera || '-'}</dd></div>
+                      <div className="grid grid-cols-3"><dt className="text-gray-500">T. Chaleco</dt><dd className="col-span-2 text-gray-900">{selectedEmpleado.talla_chaleco || '-'}</dd></div>
+                      <div className="grid grid-cols-3"><dt className="text-gray-500">T. Zapato</dt><dd className="col-span-2 text-gray-900">{selectedEmpleado.talla_calzado || '-'}</dd></div>
                     </dl>
                   </div>
                   
@@ -1188,7 +1198,9 @@ export default function EmployeesPage() {
                       correo_personal: selectedEmpleado.correo_personal || "",
                       entidad_bancaria: selectedEmpleado.entidad_bancaria || "",
                       tipo_cuenta: selectedEmpleado.tipo_cuenta || "",
-                      fecha_cese: selectedEmpleado.fecha_cese || ""
+                      fecha_cese: selectedEmpleado.fecha_cese || "",
+                      talla_chaleco: selectedEmpleado.talla_chaleco || "",
+                      talla_calzado: selectedEmpleado.talla_calzado || ""
                     });
                     setEditingId(selectedEmpleado.id);
                     setSelectedEmpleado(null);
