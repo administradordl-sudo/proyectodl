@@ -11,6 +11,9 @@ type Permiso = {
   nombre_trabajador: string;
   fecha_permiso: string;
   motivo: string;
+  motivo: string;
+  tipo_permiso: 'DIA' | 'HORAS';
+  horas_permiso: string | null;
   estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
 };
 
@@ -34,7 +37,7 @@ export default function EmployeeRequestsPage() {
   const [loading, setLoading] = useState(true);
   
   const [isAdding, setIsAdding] = useState(false);
-  const [newPermiso, setNewPermiso] = useState({ nombre_trabajador: "", fecha: "", motivo: "" });
+  const [newPermiso, setNewPermiso] = useState({ nombre_trabajador: "", fecha: "", motivo: "", tipo_permiso: 'DIA' as 'DIA' | 'HORAS', horas_permiso: "" });
   const [newVacacion, setNewVacacion] = useState({ nombre_trabajador: "", fecha_inicio: "", fecha_fin: "", motivo: "" });
 
   useEffect(() => {
@@ -110,6 +113,8 @@ export default function EmployeeRequestsPage() {
           nombre_trabajador: newPermiso.nombre_trabajador || MOCK_USER,
           fecha_permiso: newPermiso.fecha, 
           motivo: newPermiso.motivo,
+          tipo_permiso: newPermiso.tipo_permiso,
+          horas_permiso: newPermiso.tipo_permiso === 'HORAS' ? newPermiso.horas_permiso : null,
           estado: 'PENDIENTE',
           solicitado_por: 'mock-user-id'
         }])
@@ -118,7 +123,7 @@ export default function EmployeeRequestsPage() {
       if (error) throw error;
       
       setPermisos([data[0], ...permisos]);
-      setNewPermiso({ nombre_trabajador: "", fecha: "", motivo: "" });
+      setNewPermiso({ nombre_trabajador: "", fecha: "", motivo: "", tipo_permiso: 'DIA', horas_permiso: "" });
       setIsAdding(false);
     } catch (error) {
       console.error("Error adding permiso", error);
@@ -248,7 +253,36 @@ export default function EmployeeRequestsPage() {
                 className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
+            
             <div className="flex-1 space-y-2">
+              <label className="text-sm font-medium text-gray-700">Tipo de Permiso</label>
+              <select
+                value={newPermiso.tipo_permiso}
+                onChange={e => setNewPermiso({ ...newPermiso, tipo_permiso: e.target.value as 'DIA' | 'HORAS' })}
+                className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+              >
+                <option value="DIA">Día Completo</option>
+                <option value="HORAS">Por Horas</option>
+              </select>
+            </div>
+
+            {newPermiso.tipo_permiso === 'HORAS' && (
+              <div className="flex-1 space-y-2">
+                <label className="text-sm font-medium text-gray-700">Cantidad (HH:MM)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej. 02:30"
+                  pattern="^\d{2}:\d{2}$"
+                  title="Formato requerido: HH:MM (ej. 02:30)"
+                  value={newPermiso.horas_permiso}
+                  onChange={e => setNewPermiso({ ...newPermiso, horas_permiso: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
+            )}
+
+            <div className="flex-1 space-y-2 min-w-[200px]">
               <label className="text-sm font-medium text-gray-700">Fecha del Permiso</label>
               <input
                 type="date"

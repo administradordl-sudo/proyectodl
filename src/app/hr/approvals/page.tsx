@@ -10,6 +10,8 @@ type Permiso = {
   nombre_trabajador: string;
   fecha_permiso: string;
   motivo: string;
+  tipo_permiso: 'DIA' | 'HORAS';
+  horas_permiso: string | null;
   estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
 };
 
@@ -122,9 +124,16 @@ export default function ApprovalsPage() {
                     <User className="w-4 h-4 text-gray-400" />
                     {permiso.nombre_trabajador}
                   </h3>
-                  <div className="flex items-center gap-2 text-gray-500 text-sm mt-1">
-                    <CalendarDays className="w-4 h-4" />
-                    {permiso.fecha_permiso}
+                  <div className="flex flex-wrap items-center gap-2 text-gray-500 text-sm mt-2">
+                    <div className="flex items-center gap-1">
+                      <CalendarDays className="w-4 h-4" />
+                      {permiso.fecha_permiso}
+                    </div>
+                    {permiso.tipo_permiso === 'HORAS' && (
+                      <span className="bg-blue-100 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-semibold border border-blue-200">
+                        Por Horas: {permiso.horas_permiso}
+                      </span>
+                    )}
                   </div>
                 </div>
 

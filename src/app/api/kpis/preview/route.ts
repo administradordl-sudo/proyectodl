@@ -53,8 +53,8 @@ export async function POST(request: Request) {
     const feriadosMap = new Map<string, string>();
     feriadosData?.forEach((f) => feriadosMap.set(f.fecha, f.descripcion || 'Feriado'));
 
-    const permisosMap = new Map<string, string>();
-    permisosData?.forEach((p) => permisosMap.set(`${normalizeName(p.nombre_trabajador)}_${p.fecha_permiso}`, p.motivo || 'Permiso Aprobado'));
+    const permisosMap = new Map<string, { motivo: string; tipo: string; horas: string | null }>();
+    permisosData?.forEach((p) => permisosMap.set(`${normalizeName(p.nombre_trabajador)}_${p.fecha_permiso}`, { motivo: p.motivo || 'Permiso Aprobado', tipo: p.tipo_permiso || 'DIA', horas: p.horas_permiso }));
 
     const vacacionesMap = new Map<string, string>();
     if (vacacionesData) {
@@ -187,9 +187,13 @@ export async function POST(request: Request) {
       let tardanzasMins = 0;
 
       const motivoFeriado = feriadosMap.get(fechaStr);
-      const motivoPermiso = permisosMap.get(`${normName}_${fechaStr}`);
+      const permisoObj = permisosMap.get(`${normName}_${fechaStr}`);
+      const motivoPermiso = permisoObj?.motivo;
+      const isPermisoDia = permisoObj?.tipo === 'DIA';
+      const permisoMins = (permisoObj?.tipo === 'HORAS' && permisoObj?.horas) ? (getMinsFromCell(permisoObj.horas) || 0) : 0;
+
       const motivoVacacion = vacacionesMap.get(`${normName}_${fechaStr}`);
-      const isJustified = !!motivoFeriado || !!motivoPermiso || !!motivoVacacion;
+      const isJustified = !!motivoFeriado || isPermisoDia || !!motivoVacacion;
 
       if (motivoPermiso && !motivoFeriado) {
         permisosPreview.push({
@@ -226,6 +230,8 @@ export async function POST(request: Request) {
           // Priority to direct Tardanza column from Excel
           if (tardanzaCol && row.getCell(tardanzaCol).value != null) {
             tardanzasMins = getMinsFromCell(row.getCell(tardanzaCol).value) || 0;
+            if (permisoMins > 0) tardanzasMins = Math.max(0, tardanzasMins - Math.abs(permisoMins));
+            
             if (tardanzasMins > 0) {
               tardanzasPreview.push({
                 nombre: displayName,
@@ -261,14 +267,16 @@ export async function POST(request: Request) {
               if (expectedStartMins !== null && actualStartMins !== null && actualStartMins > expectedStartMins) {
                 // Ignore absurd tardiness > 8 hours (480 mins) -> this is definitely a missing clock-in
                 tardanzasMins = actualStartMins - expectedStartMins;
-                if (tardanzasMins < 480) {
+                if (permisoMins > 0) tardanzasMins = Math.max(0, tardanzasMins - Math.abs(permisoMins));
+
+                if (tardanzasMins < 480 && tardanzasMins > 0) {
                   tardanzasPreview.push({
                     nombre: displayName,
                     fecha: fechaStr,
                     minutos: tardanzasMins,
                     hora_ingreso: getTimeString(ingresoCellToUse)
                   });
-                } else {
+                } else if (tardanzasMins >= 480) {
                   tardanzasMins = 0; // Don't count as tardiness, it's just a bad record
                 }
               }

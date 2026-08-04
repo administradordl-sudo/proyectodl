@@ -44,9 +44,9 @@ export async function POST(request: Request) {
         .join(' ');
     };
 
-    const permisosMap = new Map<string, string>();
+    const permisosMap = new Map<string, { motivo: string; tipo: string; horas: string | null }>();
     permisosData?.forEach((p) =>
-      permisosMap.set(`${normalizeName(p.nombre_trabajador)}_${p.fecha_permiso}`, p.motivo)
+      permisosMap.set(`${normalizeName(p.nombre_trabajador)}_${p.fecha_permiso}`, { motivo: p.motivo, tipo: p.tipo_permiso || 'DIA', horas: p.horas_permiso })
     );
 
     const vacacionesMap = new Map<string, string>();
@@ -176,7 +176,10 @@ export async function POST(request: Request) {
         let isForgiven = false;
 
         const motivoFeriado = feriadosMap.get(fechaStr);
-        const motivoPermiso = permisosMap.get(`${normName}_${fechaStr}`);
+        const permisoObj = permisosMap.get(`${normName}_${fechaStr}`);
+        const motivoPermiso = permisoObj?.motivo;
+        const isPermisoDia = permisoObj?.tipo === 'DIA';
+        const permisoMins = (permisoObj?.tipo === 'HORAS' && permisoObj?.horas) ? (getMinsFromCell(permisoObj.horas) || 0) : 0;
         const motivoVacacion = vacacionesMap.get(`${normName}_${fechaStr}`);
 
         if (motivoVacacion) {
@@ -186,8 +189,15 @@ export async function POST(request: Request) {
           labels.push(`FERIADO NACIONAL: ${motivoFeriado}`);
           isForgiven = true;
         } else if (motivoPermiso) {
-          labels.push(`PERMISO RRHH: ${motivoPermiso}`);
-          isForgiven = true;
+          if (isPermisoDia) {
+            labels.push(`PERMISO RRHH: ${motivoPermiso}`);
+            isForgiven = true;
+          } else {
+            labels.push(`PERMISO RRHH: ${motivoPermiso} (${permisoObj?.horas})`);
+            if (r !== lastRow) {
+              forgivenNotWorkedMins += permisoMins;
+            }
+          }
         }
 
         if (isForgiven && r !== lastRow) {
