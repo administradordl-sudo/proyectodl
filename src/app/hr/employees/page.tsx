@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, Trash2, Users, Search, ChevronDown, ChevronUp, X, Upload, Download } from "lucide-react";
+import { Plus, Trash2, Users, Search, ChevronDown, ChevronUp, X, Upload, Download, Filter } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import clsx from "clsx";
@@ -71,6 +71,28 @@ export default function EmployeesPage() {
   const [filterArea, setFilterArea] = useState("Todas");
   const [sortBy, setSortBy] = useState("fin_contrato_asc");
   const [selectedEmpleado, setSelectedEmpleado] = useState<Empleado | null>(null);
+
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState({
+    hijos: "",
+    estado_civil: "",
+    distrito: "",
+    entidad_bancaria: "",
+    jefe: "",
+    puesto: ""
+  });
+
+  const uniqueOptions = useMemo(() => {
+    const getOptions = (key: keyof Empleado) => Array.from(new Set(empleados.map(e => e[key]).filter(Boolean))).sort();
+    return {
+      hijos: getOptions('hijos'),
+      estado_civil: getOptions('estado_civil'),
+      distrito: getOptions('distrito'),
+      entidad_bancaria: getOptions('entidad_bancaria'),
+      jefe: getOptions('jefe'),
+      puesto: getOptions('puesto')
+    };
+  }, [empleados]);
 
   const uniqueAreas = useMemo(() => {
     const hasDesconocida = empleados.some(e => !e.area || e.area.trim() === "");
@@ -493,6 +515,13 @@ export default function EmployeesPage() {
       }
     }
 
+    if (advancedFilters.hijos) result = result.filter(e => e.hijos === advancedFilters.hijos);
+    if (advancedFilters.estado_civil) result = result.filter(e => e.estado_civil === advancedFilters.estado_civil);
+    if (advancedFilters.distrito) result = result.filter(e => e.distrito === advancedFilters.distrito);
+    if (advancedFilters.entidad_bancaria) result = result.filter(e => e.entidad_bancaria === advancedFilters.entidad_bancaria);
+    if (advancedFilters.jefe) result = result.filter(e => e.jefe === advancedFilters.jefe);
+    if (advancedFilters.puesto) result = result.filter(e => e.puesto === advancedFilters.puesto);
+
     result.sort((a, b) => {
       const timeA = a.fecha_fin_contrato ? new Date(a.fecha_fin_contrato).getTime() : 0;
       const timeB = b.fecha_fin_contrato ? new Date(b.fecha_fin_contrato).getTime() : 0;
@@ -523,7 +552,7 @@ export default function EmployeesPage() {
     });
 
     return result;
-  }, [empleados, searchTerm, filterStatus, filterArea, sortBy]);
+  }, [empleados, searchTerm, filterStatus, filterArea, advancedFilters, sortBy]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-10">
@@ -878,8 +907,99 @@ export default function EmployeesPage() {
               <option value="inicio_contrato_desc">Recientes (Inicio)</option>
               <option value="inicio_contrato_asc">Antiguos (Inicio)</option>
             </select>
+            <button
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={clsx(
+                "flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors",
+                showAdvancedFilters ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+              )}
+            >
+              <Filter className="w-4 h-4" />
+              Filtros Avanzados
+            </button>
           </div>
         </div>
+        
+        {/* Advanced Filters Drawer */}
+        <AnimatePresence>
+          {showAdvancedFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="border-b border-gray-100 bg-gray-50/50 overflow-hidden"
+            >
+              <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Hijos</label>
+                  <select
+                    value={advancedFilters.hijos}
+                    onChange={(e) => setAdvancedFilters(p => ({ ...p, hijos: e.target.value }))}
+                    className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Todos</option>
+                    {uniqueOptions.hijos.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Estado Civil</label>
+                  <select
+                    value={advancedFilters.estado_civil}
+                    onChange={(e) => setAdvancedFilters(p => ({ ...p, estado_civil: e.target.value }))}
+                    className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Todos</option>
+                    {uniqueOptions.estado_civil.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Distrito</label>
+                  <select
+                    value={advancedFilters.distrito}
+                    onChange={(e) => setAdvancedFilters(p => ({ ...p, distrito: e.target.value }))}
+                    className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Todos</option>
+                    {uniqueOptions.distrito.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Banco</label>
+                  <select
+                    value={advancedFilters.entidad_bancaria}
+                    onChange={(e) => setAdvancedFilters(p => ({ ...p, entidad_bancaria: e.target.value }))}
+                    className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Todos</option>
+                    {uniqueOptions.entidad_bancaria.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Jefe</label>
+                  <select
+                    value={advancedFilters.jefe}
+                    onChange={(e) => setAdvancedFilters(p => ({ ...p, jefe: e.target.value }))}
+                    className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Todos</option>
+                    {uniqueOptions.jefe.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Puesto</label>
+                  <select
+                    value={advancedFilters.puesto}
+                    onChange={(e) => setAdvancedFilters(p => ({ ...p, puesto: e.target.value }))}
+                    className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Todos</option>
+                    {uniqueOptions.puesto.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         <div className="overflow-x-auto w-full">
           <table className="w-full min-w-[700px] text-left border-collapse text-sm">
