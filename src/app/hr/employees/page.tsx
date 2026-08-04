@@ -47,6 +47,7 @@ type Empleado = {
   correo_personal?: string;
   entidad_bancaria?: string;
   tipo_cuenta?: string;
+  fecha_cese?: string;
 };
 
 const initialForm = {
@@ -55,7 +56,7 @@ const initialForm = {
   hijos: "", carrera: "", distrito: "", nro_cta: "", tipo_cta: "", afp: "", cuspp: "",
   vida_ley: "No Entregado", sede: "", status: "Activo", fecha_inicio_contrato: "", 
   fecha_fin_contrato: "", estado_civil: "", correo_personal: "", entidad_bancaria: "", 
-  tipo_cuenta: ""
+  tipo_cuenta: "", fecha_cese: ""
 };
 
 export default function EmployeesPage() {
@@ -400,18 +401,25 @@ export default function EmployeesPage() {
 
     setIsSubmitting(true);
     try {
-      // Remove empty fields to avoid sending empty strings for dates
       const dataToSubmit = { ...formData };
+      
+      // Clean empty strings for date fields to prevent Supabase errors
       if (!dataToSubmit.fecha_ingreso) delete (dataToSubmit as any).fecha_ingreso;
       if (!dataToSubmit.cumpleanos) delete (dataToSubmit as any).cumpleanos;
       if (!dataToSubmit.fecha_inicio_contrato) delete (dataToSubmit as any).fecha_inicio_contrato;
       if (!dataToSubmit.fecha_fin_contrato) delete (dataToSubmit as any).fecha_fin_contrato;
+      
+      if (formData.status !== 'Cesado') {
+        (dataToSubmit as any).fecha_cese = null;
+      } else if (!dataToSubmit.fecha_cese) {
+        delete (dataToSubmit as any).fecha_cese;
+      }
 
       if (editingId) {
-        const { error } = await supabase.from('empleados').update(dataToSubmit).eq('id', editingId);
+        const { error } = await supabase.from("empleados").update(dataToSubmit).eq("id", editingId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('empleados').insert([dataToSubmit]);
+        const { error } = await supabase.from("empleados").insert([dataToSubmit]);
         if (error) throw error;
       }
       
@@ -634,6 +642,19 @@ export default function EmployeesPage() {
                           triggerClassName="w-full px-3 py-2 border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500 bg-white" 
                         />
                       </div>
+                      {formData.status === "Cesado" && (
+                        <div className="animate-in fade-in duration-200">
+                          <label className="block text-xs font-bold text-red-600 mb-1">Fecha de Cese *</label>
+                          <input 
+                            required={formData.status === "Cesado"}
+                            type="date" 
+                            name="fecha_cese" 
+                            value={formData.fecha_cese || ""} 
+                            onChange={handleChange} 
+                            className="w-full px-3 py-2 border border-red-300 rounded-md text-sm focus:ring-1 focus:ring-red-500 bg-red-50 text-red-900" 
+                          />
+                        </div>
+                      )}
                       <div><label className="block text-xs font-medium text-gray-600 mb-1">Email (Corp)</label><input type="email" name="email" value={formData.email || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
                       <div><label className="block text-xs font-medium text-gray-600 mb-1">Teléfono Corp.</label><input name="telefono_corporativo" value={formData.telefono_corporativo || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
                       <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha de Ingreso *</label><input required type="date" name="fecha_ingreso" value={formData.fecha_ingreso || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
