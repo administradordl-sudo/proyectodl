@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Upload, FileSpreadsheet, Loader2, AlertCircle, TrendingUp, Clock, AlertTriangle, Building2, Users, Database } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, AlertCircle, TrendingUp, Clock, AlertTriangle, Building2, Users, Database, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 
@@ -19,6 +19,13 @@ type KpiData = {
   };
 };
 
+type PreviewData = {
+  count: number;
+  faltasPreview: { nombre: string, fecha: string }[];
+  tardanzasPreview: { nombre: string, fecha: string, minutos: number, hora_ingreso: string }[];
+  asistenciasToUpsert: any[];
+};
+
 export default function KpisPage() {
   const [data, setData] = useState<KpiData | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -27,9 +34,15 @@ export default function KpisPage() {
   const [showUploader, setShowUploader] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  
+  // Preview & Upload state
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchStats = async () => {
@@ -68,48 +81,83 @@ export default function KpisPage() {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const droppedFile = e.dataTransfer.files[0];
-      if (droppedFile.name.endsWith('.xlsx') || droppedFile.name.endsWith('.xls')) {
-        setFile(droppedFile);
-        setUploadError(null);
-        setUploadSuccess(null);
-      } else {
-        setUploadError("Por favor, sube un archivo Excel válido (.xlsx o .xls)");
-      }
+      handleNewFile(droppedFile);
     }
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      setUploadError(null);
-      setUploadSuccess(null);
+      handleNewFile(e.target.files[0]);
     }
   };
 
-  const processKpis = async () => {
+  const handleNewFile = (newFile: File) => {
+    if (newFile.name.endsWith('.xlsx') || newFile.name.endsWith('.xls')) {
+      setFile(newFile);
+      setUploadError(null);
+      setUploadSuccess(null);
+      setPreviewData(null);
+    } else {
+      setUploadError("Por favor, sube un archivo Excel válido (.xlsx o .xls)");
+    }
+  };
+
+  const previewKpis = async () => {
     if (!file) return;
 
-    setIsUploading(true);
+    setIsPreviewing(true);
     setUploadError(null);
     setUploadSuccess(null);
+    setPreviewData(null);
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const response = await fetch("/api/kpis/process", {
+      const response = await fetch("/api/kpis/preview", {
         method: "POST",
         body: formData,
       });
 
+      const resultData = await response.json();
+
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || "Error al procesar el archivo");
+        throw new Error(resultData.error || "Error al leer el archivo. Verifica el formato.");
       }
 
+      setPreviewData(resultData);
+      
+    } catch (err: any) {
+      setUploadError(err.message);
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  const processKpis = async () => {
+    if (!previewData || !previewData.asistenciasToUpsert) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      const response = await fetch("/api/kpis/process", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ asistenciasToUpsert: previewData.asistenciasToUpsert }),
+      });
+
       const resultData = await response.json();
-      setUploadSuccess(`¡Éxito! Se importaron ${resultData.count} registros de asistencia a la base de datos.`);
+
+      if (!response.ok) {
+        throw new Error(resultData.error || "Error al procesar el guardado");
+      }
+
+      setUploadSuccess(`¡Éxito! Se guardaron ${resultData.count} registros permanentemente.`);
       setFile(null);
+      setPreviewData(null);
       
       // Refresh stats
       await fetchStats();
@@ -150,75 +198,145 @@ export default function KpisPage() {
           >
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
               <div className="mb-4">
-                <h3 className="text-lg font-bold">Importar Historial de Asistencias</h3>
-                <p className="text-sm text-gray-500">Sube el reporte de marcaciones. Los registros se guardarán permanentemente. (No se duplicarán si subes el mismo día 2 veces).</p>
+                <h3 className="text-lg font-bold">Importador y Previsualizador</h3>
+                <p className="text-sm text-gray-500">
+                  Sube el reporte de marcaciones. El sistema primero leerá el archivo y te mostrará una vista previa de lo que encontró, 
+                  para que puedas confirmar antes de guardar en la Base de Datos.
+                </p>
               </div>
 
-              <div
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={clsx(
-                  "relative group flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200",
-                  isDragging ? "border-primary bg-primary/5" : "border-gray-200 hover:border-primary/50 hover:bg-gray-50",
-                  file ? "bg-primary/5 border-primary/50" : ""
-                )}
-              >
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept=".xlsx, .xls"
-                  className="hidden"
-                />
-                
-                <AnimatePresence mode="wait">
-                  {!file ? (
-                    <motion.div
-                      key="empty"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="flex flex-col items-center text-center space-y-4"
-                    >
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                        <Upload className="w-6 h-6 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-base font-medium text-gray-700">Arrastra tu Excel aquí para importar</p>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="file"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="flex flex-col items-center space-y-4"
-                    >
-                      <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                        <FileSpreadsheet className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <div className="text-center">
-                        <p className="font-medium text-gray-900">{file.name}</p>
-                        <p className="text-sm text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFile(null);
-                          setUploadError(null);
-                          setUploadSuccess(null);
-                        }}
-                        className="text-sm text-red-500 hover:text-red-700 hover:underline"
-                      >
-                        Quitar archivo
-                      </button>
-                    </motion.div>
+              {!previewData && !uploadSuccess && (
+                <div
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={clsx(
+                    "relative group flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200",
+                    isDragging ? "border-primary bg-primary/5" : "border-gray-200 hover:border-primary/50 hover:bg-gray-50",
+                    file ? "bg-primary/5 border-primary/50" : ""
                   )}
-                </AnimatePresence>
-              </div>
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept=".xlsx, .xls"
+                    className="hidden"
+                  />
+                  
+                  <AnimatePresence mode="wait">
+                    {!file ? (
+                      <motion.div
+                        key="empty"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="flex flex-col items-center text-center space-y-4"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                          <Upload className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-base font-medium text-gray-700">Arrastra tu Excel aquí para importar</p>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="file"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex flex-col items-center space-y-4"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                          <FileSpreadsheet className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-medium text-gray-900">{file.name}</p>
+                          <p className="text-sm text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFile(null);
+                            setUploadError(null);
+                          }}
+                          className="text-sm text-red-500 hover:text-red-700 hover:underline"
+                        >
+                          Quitar archivo
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {/* Preview UI */}
+              {previewData && !uploadSuccess && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-6"
+                >
+                  <div className="bg-blue-50 border border-blue-100 p-6 rounded-xl">
+                    <div className="flex items-center gap-3 mb-4">
+                      <FileSpreadsheet className="w-6 h-6 text-blue-600" />
+                      <h4 className="text-lg font-bold text-blue-900">Vista Previa de Importación</h4>
+                    </div>
+                    
+                    <p className="text-sm text-blue-800 mb-6">
+                      Se han procesado correctamente <strong>{previewData.count} registros de asistencia</strong> del archivo. 
+                      A continuación, un resumen de las incidencias detectadas (se descartaron feriados y permisos aprobados).
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Tardanzas List */}
+                      <div className="bg-white rounded-lg p-4 shadow-sm border border-orange-100">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Clock className="w-4 h-4 text-orange-500" />
+                          <h5 className="font-semibold text-gray-900">Tardanzas Detectadas ({previewData.tardanzasPreview.length})</h5>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+                          {previewData.tardanzasPreview.length === 0 ? (
+                            <p className="text-sm text-gray-500 italic">No hay tardanzas en este archivo.</p>
+                          ) : (
+                            previewData.tardanzasPreview.map((t, i) => (
+                              <div key={i} className="text-sm flex justify-between p-2 hover:bg-gray-50 rounded">
+                                <div>
+                                  <p className="font-medium text-gray-800">{t.nombre}</p>
+                                  <p className="text-xs text-gray-500">Fecha: {t.fecha} | Llegó: {t.hora_ingreso}</p>
+                                </div>
+                                <span className="font-bold text-orange-600">{t.minutos} min</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Faltas List */}
+                      <div className="bg-white rounded-lg p-4 shadow-sm border border-red-100">
+                        <div className="flex items-center gap-2 mb-3">
+                          <AlertTriangle className="w-4 h-4 text-red-500" />
+                          <h5 className="font-semibold text-gray-900">Faltas Detectadas ({previewData.faltasPreview.length})</h5>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+                          {previewData.faltasPreview.length === 0 ? (
+                            <p className="text-sm text-gray-500 italic">No hay faltas en este archivo.</p>
+                          ) : (
+                            previewData.faltasPreview.map((f, i) => (
+                              <div key={i} className="text-sm p-2 hover:bg-gray-50 rounded">
+                                <p className="font-medium text-gray-800">{f.nombre}</p>
+                                <p className="text-xs text-gray-500">Fecha: {f.fecha}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
 
               {uploadError && (
                 <motion.div 
@@ -237,29 +355,63 @@ export default function KpisPage() {
                   animate={{ opacity: 1 }}
                   className="mt-4 p-4 bg-green-50 text-green-700 rounded-lg flex items-center gap-3 text-sm"
                 >
-                  <Database className="w-5 h-5 flex-shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
                   <p>{uploadSuccess}</p>
                 </motion.div>
               )}
 
-              <div className="mt-6 flex justify-end">
-                <button
-                  disabled={!file || isUploading}
-                  onClick={processKpis}
-                  className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Importando...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-5 h-5" />
-                      Guardar en Base de Datos
-                    </>
-                  )}
-                </button>
+              <div className="mt-6 flex justify-end gap-3">
+                {previewData && !uploadSuccess && (
+                  <button
+                    onClick={() => {
+                      setPreviewData(null);
+                      setFile(null);
+                    }}
+                    className="px-6 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                )}
+
+                {!previewData && !uploadSuccess && (
+                  <button
+                    disabled={!file || isPreviewing}
+                    onClick={previewKpis}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isPreviewing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Analizando...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-5 h-5" />
+                        Previsualizar Datos
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {previewData && !uploadSuccess && (
+                  <button
+                    disabled={isUploading}
+                    onClick={processKpis}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Guardando en BD...
+                      </>
+                    ) : (
+                      <>
+                        <Database className="w-5 h-5" />
+                        Confirmar y Guardar en BD
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>

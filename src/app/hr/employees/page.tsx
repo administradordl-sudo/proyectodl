@@ -98,7 +98,22 @@ export default function EmployeesPage() {
              const date = cell.value as Date;
              return date.toISOString().split('T')[0];
           }
-          return cell.text?.trim() || '';
+          
+          let strVal = cell.value?.toString().trim() || '';
+          
+          // Convert DD/MM/YYYY strings to YYYY-MM-DD for DB
+          if (strVal.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+            const [day, month, year] = strVal.split('/');
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          }
+          
+          return strVal;
+        };
+
+        const getDateVal = (col: number) => {
+          const val = getVal(col);
+          if (!val || val === '-' || val.toUpperCase() === 'N/A' || val.toUpperCase() === 'NA') return null;
+          return val;
         };
 
         const rawStatus = getVal(1);
@@ -111,16 +126,16 @@ export default function EmployeesPage() {
 
         const empleado: any = {
           status: finalStatus,
-          fecha_ingreso: getVal(2),
+          fecha_ingreso: getDateVal(2),
           dni: getVal(3),
           apellidos: getVal(4),
           nombres: getVal(5),
           puesto: getVal(6),
           jefe: getVal(7),
           area: getVal(8),
-          fecha_inicio_contrato: getVal(9),
-          fecha_fin_contrato: getVal(10),
-          cumpleanos: getVal(11),
+          fecha_inicio_contrato: getDateVal(9),
+          fecha_fin_contrato: getDateVal(10),
+          cumpleanos: getDateVal(11),
           estado_civil: getVal(12),
           genero: getVal(13), // sexo
           hijos: getVal(14),
@@ -192,16 +207,16 @@ export default function EmployeesPage() {
 
       worksheet.columns = [
         { header: 'Status (Activo/Cesado/Licencia)', width: 25 },
-        { header: 'Fecha de Ingreso (YYYY-MM-DD)', width: 25 },
+        { header: 'Fecha de Ingreso (DD/MM/YYYY)', width: 25 },
         { header: 'DNI', width: 15 },
         { header: 'Apellidos', width: 30 },
         { header: 'Nombres', width: 30 },
         { header: 'Puesto', width: 25 },
         { header: 'Jefe Directo', width: 25 },
         { header: 'Área', width: 20 },
-        { header: 'Inicio Contrato (YYYY-MM-DD)', width: 25 },
-        { header: 'Fin Contrato (YYYY-MM-DD)', width: 25 },
-        { header: 'Cumpleaños (YYYY-MM-DD)', width: 25 },
+        { header: 'Inicio Contrato (DD/MM/YYYY)', width: 25 },
+        { header: 'Fin Contrato (DD/MM/YYYY)', width: 25 },
+        { header: 'Cumpleaños (DD/MM/YYYY)', width: 25 },
         { header: 'Estado Civil', width: 15 },
         { header: 'Género (Masculino/Femenino)', width: 25 },
         { header: 'Hijos', width: 10 },
