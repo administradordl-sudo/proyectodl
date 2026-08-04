@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Upload, FileSpreadsheet, Loader2, AlertCircle, TrendingUp, Clock, AlertTriangle, Building2, Users, Database, CheckCircle2 } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, AlertCircle, TrendingUp, Clock, AlertTriangle, Building2, Users, Database, CheckCircle2, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 
@@ -23,7 +23,79 @@ type PreviewData = {
   count: number;
   faltasPreview: { nombre: string, fecha: string }[];
   tardanzasPreview: { nombre: string, fecha: string, minutos: number, hora_ingreso: string }[];
+  permisosPreview: { nombre: string, fecha: string, motivo: string }[];
   asistenciasToUpsert: any[];
+};
+
+const AccordionList = ({ 
+  items, 
+  icon: Icon, 
+  title, 
+  containerBorderClass,
+  iconColorClass,
+  renderDetail 
+}: any) => {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  
+  // Agrupar por nombre
+  const grouped = items.reduce((acc: any, item: any) => {
+    if (!acc[item.nombre]) acc[item.nombre] = [];
+    acc[item.nombre].push(item);
+    return acc;
+  }, {});
+
+  const toggle = (nombre: string) => {
+    setExpanded(prev => ({...prev, [nombre]: !prev[nombre]}));
+  };
+
+  return (
+    <div className={`bg-white rounded-lg p-4 shadow-sm border ${containerBorderClass}`}>
+      <div className="flex items-center gap-2 mb-3">
+        <Icon className={`w-4 h-4 ${iconColorClass}`} />
+        <h5 className="font-semibold text-gray-900">{title} ({items.length})</h5>
+      </div>
+      <div className="max-h-[350px] overflow-y-auto space-y-2 pr-2">
+        {Object.keys(grouped).length === 0 ? (
+          <p className="text-sm text-gray-500 italic">No hay registros.</p>
+        ) : (
+          Object.keys(grouped).sort().map((nombre, i) => (
+            <div key={i} className="border border-gray-100 rounded-md overflow-hidden">
+              <button 
+                onClick={() => toggle(nombre)}
+                className="w-full flex justify-between items-center p-2.5 bg-gray-50 hover:bg-gray-100 text-left transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm text-gray-800">{nombre}</span>
+                  <span className="text-xs font-bold px-2 py-0.5 bg-white border border-gray-200 rounded-full text-gray-600">
+                    {grouped[nombre].length}
+                  </span>
+                </div>
+                {expanded[nombre] ? (
+                  <ChevronUp className="w-4 h-4 text-gray-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                )}
+              </button>
+              <AnimatePresence>
+                {expanded[nombre] && (
+                  <motion.div 
+                    initial={{ height: 0 }} 
+                    animate={{ height: "auto" }} 
+                    exit={{ height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-2 space-y-1 bg-white">
+                      {grouped[nombre].map((item: any, j: number) => renderDetail(item, j))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default function KpisPage() {
@@ -287,52 +359,58 @@ export default function KpisPage() {
                     
                     <p className="text-sm text-blue-800 mb-6">
                       Se han procesado correctamente <strong>{previewData.count} registros de asistencia</strong> del archivo. 
-                      A continuación, un resumen de las incidencias detectadas (se descartaron feriados y permisos aprobados).
+                      A continuación, un resumen agrupado por trabajador (se descartaron feriados).
                     </p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Tardanzas List */}
-                      <div className="bg-white rounded-lg p-4 shadow-sm border border-orange-100">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Clock className="w-4 h-4 text-orange-500" />
-                          <h5 className="font-semibold text-gray-900">Tardanzas Detectadas ({previewData.tardanzasPreview.length})</h5>
-                        </div>
-                        <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                          {previewData.tardanzasPreview.length === 0 ? (
-                            <p className="text-sm text-gray-500 italic">No hay tardanzas en este archivo.</p>
-                          ) : (
-                            previewData.tardanzasPreview.map((t, i) => (
-                              <div key={i} className="text-sm flex justify-between p-2 hover:bg-gray-50 rounded">
-                                <div>
-                                  <p className="font-medium text-gray-800">{t.nombre}</p>
-                                  <p className="text-xs text-gray-500">Fecha: {t.fecha} | Llegó: {t.hora_ingreso}</p>
-                                </div>
-                                <span className="font-bold text-orange-600">{t.minutos} min</span>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      
+                      <AccordionList 
+                        title="Tardanzas"
+                        icon={Clock}
+                        items={previewData.tardanzasPreview}
+                        containerBorderClass="border-orange-200"
+                        iconColorClass="text-orange-500"
+                        renderDetail={(t: any, i: number) => (
+                          <div key={i} className="flex justify-between items-center text-xs py-1.5 px-2 hover:bg-orange-50 rounded text-gray-600">
+                            <span>{t.fecha}</span>
+                            <div className="flex items-center gap-3">
+                              <span>Llegó: {t.hora_ingreso}</span>
+                              <span className="font-bold text-orange-600">{t.minutos} min</span>
+                            </div>
+                          </div>
+                        )}
+                      />
 
-                      {/* Faltas List */}
-                      <div className="bg-white rounded-lg p-4 shadow-sm border border-red-100">
-                        <div className="flex items-center gap-2 mb-3">
-                          <AlertTriangle className="w-4 h-4 text-red-500" />
-                          <h5 className="font-semibold text-gray-900">Faltas Detectadas ({previewData.faltasPreview.length})</h5>
-                        </div>
-                        <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                          {previewData.faltasPreview.length === 0 ? (
-                            <p className="text-sm text-gray-500 italic">No hay faltas en este archivo.</p>
-                          ) : (
-                            previewData.faltasPreview.map((f, i) => (
-                              <div key={i} className="text-sm p-2 hover:bg-gray-50 rounded">
-                                <p className="font-medium text-gray-800">{f.nombre}</p>
-                                <p className="text-xs text-gray-500">Fecha: {f.fecha}</p>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
+                      <AccordionList 
+                        title="Faltas Injustificadas"
+                        icon={AlertTriangle}
+                        items={previewData.faltasPreview}
+                        containerBorderClass="border-red-200"
+                        iconColorClass="text-red-500"
+                        renderDetail={(f: any, i: number) => (
+                          <div key={i} className="flex justify-between items-center text-xs py-1.5 px-2 hover:bg-red-50 rounded text-gray-600">
+                            <span>{f.fecha}</span>
+                            <span className="font-bold text-red-600">Falta</span>
+                          </div>
+                        )}
+                      />
+                      
+                      <AccordionList 
+                        title="Permisos Reconocidos"
+                        icon={ShieldCheck}
+                        items={previewData.permisosPreview || []}
+                        containerBorderClass="border-green-200"
+                        iconColorClass="text-green-500"
+                        renderDetail={(p: any, i: number) => (
+                          <div key={i} className="flex justify-between items-center text-xs py-1.5 px-2 hover:bg-green-50 rounded text-gray-600">
+                            <span>{p.fecha}</span>
+                            <span className="font-medium text-green-600 truncate max-w-[120px]" title={p.motivo}>
+                              {p.motivo}
+                            </span>
+                          </div>
+                        )}
+                      />
+
                     </div>
                   </div>
                 </motion.div>

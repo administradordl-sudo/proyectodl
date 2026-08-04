@@ -52,8 +52,8 @@ export async function POST(request: Request) {
     const feriadosMap = new Set<string>();
     feriadosData?.forEach((f) => feriadosMap.add(f.fecha));
 
-    const permisosMap = new Set<string>();
-    permisosData?.forEach((p) => permisosMap.add(`${normalizeName(p.nombre_trabajador)}_${p.fecha_permiso}`));
+    const permisosMap = new Map<string, string>();
+    permisosData?.forEach((p) => permisosMap.set(`${normalizeName(p.nombre_trabajador)}_${p.fecha_permiso}`, p.motivo || 'Permiso Aprobado'));
 
     // 2. Read the Excel file
     const arrayBuffer = await file.arrayBuffer();
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Find header row
-    const possibleCols = ['NOMBRE', 'FECHA', 'HORARIO', 'HORA INGRESO', 'OBSERVACION', 'OBSERVACIONES', 'HORA EXTRA', 'HORA NO LABORADA'];
+    const possibleCols = ['NOMBRE', 'FECHA', 'HORARIO', 'HORA INGRESO', 'OBSERVACION', 'OBSERVACIONES', 'DESCRIPCION', 'HORA EXTRA', 'HORA NO LABORADA'];
     let headerRowIndex = -1;
     let colMap: Record<string, number> = {};
 
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
         if (value && possibleCols.includes(value)) tempMap[value] = colNumber;
       });
 
-      if (tempMap['NOMBRE'] && tempMap['FECHA'] && (tempMap['OBSERVACIONES'] || tempMap['OBSERVACION'])) {
+      if (tempMap['NOMBRE'] && tempMap['FECHA'] && (tempMap['OBSERVACIONES'] || tempMap['OBSERVACION'] || tempMap['DESCRIPCION'])) {
         colMap = tempMap;
         headerRowIndex = r;
         break;
@@ -93,10 +93,10 @@ export async function POST(request: Request) {
     }
 
     if (headerRowIndex === -1) {
-      return NextResponse.json({ error: `No se encontraron las columnas necesarias en el Excel (NOMBRE, FECHA, OBSERVACIONES).` }, { status: 400 });
+      return NextResponse.json({ error: `No se encontraron las columnas necesarias en el Excel (NOMBRE, FECHA, OBSERVACIONES o DESCRIPCION).` }, { status: 400 });
     }
 
-    const obsCol = colMap['OBSERVACIONES'] || colMap['OBSERVACION'];
+    const obsCol = colMap['OBSERVACIONES'] || colMap['OBSERVACION'] || colMap['DESCRIPCION'];
 
     // Helper: convert time value to minutes
     const getMinsFromCell = (val: any): number => {
@@ -146,6 +146,7 @@ export async function POST(request: Request) {
     const asistenciasToUpsert: any[] = [];
     const faltasPreview: any[] = [];
     const tardanzasPreview: any[] = [];
+    const permisosPreview: any[] = [];
     
     for (let r = headerRowIndex + 1; r <= rowCount; r++) {
       const row = worksheet.getRow(r);
@@ -167,7 +168,17 @@ export async function POST(request: Request) {
       let faltasDias = 0;
       let tardanzasMins = 0;
 
-      const isJustified = feriadosMap.has(fechaStr) || permisosMap.has(`${normName}_${fechaStr}`);
+      const isFeriado = feriadosMap.has(fechaStr);
+      const motivoPermiso = permisosMap.get(`${normName}_${fechaStr}`);
+      const isJustified = isFeriado || !!motivoPermiso;
+
+      if (motivoPermiso) {
+        permisosPreview.push({
+          nombre: displayName,
+          fecha: fechaStr,
+          motivo: motivoPermiso
+        });
+      }
 
       if (!isJustified) {
         if (observacion.includes('falta')) {
@@ -213,6 +224,7 @@ export async function POST(request: Request) {
       count: asistenciasToUpsert.length,
       faltasPreview,
       tardanzasPreview,
+      permisosPreview,
       asistenciasToUpsert 
     }, { status: 200 });
 
