@@ -68,8 +68,14 @@ export default function EmployeesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("Activo");
+  const [filterArea, setFilterArea] = useState("Todas");
   const [sortBy, setSortBy] = useState("fin_contrato_asc");
   const [selectedEmpleado, setSelectedEmpleado] = useState<Empleado | null>(null);
+
+  const uniqueAreas = useMemo(() => {
+    const areas = new Set(empleados.map(e => e.area).filter(Boolean));
+    return Array.from(areas).sort();
+  }, [empleados]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -466,6 +472,10 @@ export default function EmployeesPage() {
       result = result.filter(e => (e.status || "Activo") === filterStatus);
     }
 
+    if (filterArea !== "Todas") {
+      result = result.filter(e => e.area === filterArea);
+    }
+
     result.sort((a, b) => {
       const timeA = a.fecha_fin_contrato ? new Date(a.fecha_fin_contrato).getTime() : 0;
       const timeB = b.fecha_fin_contrato ? new Date(b.fecha_fin_contrato).getTime() : 0;
@@ -496,7 +506,7 @@ export default function EmployeesPage() {
     });
 
     return result;
-  }, [empleados, searchTerm, filterStatus, sortBy]);
+  }, [empleados, searchTerm, filterStatus, filterArea, sortBy]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-10">
@@ -830,6 +840,16 @@ export default function EmployeesPage() {
               <option value="Activo">Activos</option>
               <option value="Cesado">Cesados</option>
               <option value="Licencia">Licencia</option>
+            </select>
+            <select
+              value={filterArea}
+              onChange={(e) => setFilterArea(e.target.value)}
+              className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="Todas">Todas (Áreas)</option>
+              {uniqueAreas.map(area => (
+                <option key={area} value={area}>{area}</option>
+              ))}
             </select>
             <select
               value={sortBy}
