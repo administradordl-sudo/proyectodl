@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Find header row
-    const possibleCols = ['NOMBRE', 'FECHA', 'HORARIO', 'HORA INGRESO', 'OBSERVACION', 'OBSERVACIONES', 'DESCRIPCION', 'HORA EXTRA', 'HORA NO LABORADA'];
+    const possibleCols = ['NOMBRE', 'FECHA', 'HORARIO', 'HORA INGRESO', 'OBSERVACION', 'OBSERVACIONES', 'DESCRIPCION', 'HORA EXTRA', 'HORA NO LABORADA', 'TARDANZA', 'TARDANZAS', 'MINUTOS TARDANZA'];
     let headerRowIndex = -1;
     let colMap: Record<string, number> = {};
 
@@ -113,18 +113,19 @@ export async function POST(request: Request) {
     const obsCol = colMap['OBSERVACIONES'] || colMap['OBSERVACION'] || colMap['DESCRIPCION'];
 
     // Helper: convert time value to minutes
-    const getMinsFromCell = (val: any): number => {
-      if (val === null || val === undefined) return 0;
+    const getMinsFromCell = (val: any): number | null => {
+      if (val === null || val === undefined || val === '') return null;
       if (val instanceof Date) return val.getHours() * 60 + val.getMinutes();
       if (typeof val === 'number') return Math.round(val * 24 * 60);
       if (typeof val === 'string') {
         const parts = val.trim().split(':');
-        if (parts.length < 2) return 0;
-        const hours = parseInt(parts[0], 10) || 0;
-        const mins  = parseInt(parts[1], 10) || 0;
+        if (parts.length < 2) return null;
+        const hours = parseInt(parts[0], 10);
+        const mins  = parseInt(parts[1], 10);
+        if (isNaN(hours) || isNaN(mins)) return null;
         return hours * 60 + (hours < 0 ? -mins : mins);
       }
-      return 0;
+      return null;
     };
     
     // Helper to extract Time string
@@ -176,7 +177,8 @@ export async function POST(request: Request) {
       const observacion = row.getCell(obsCol)?.value?.toString().toLowerCase() || '';
       const horarioCell = colMap['HORARIO'] ? row.getCell(colMap['HORARIO']).value?.toString().trim() : '';
       const ingresoCell = colMap['HORA INGRESO'] ? row.getCell(colMap['HORA INGRESO']).value : null;
-      const extraMins = colMap['HORA EXTRA'] ? getMinsFromCell(row.getCell(colMap['HORA EXTRA']).value) : 0;
+      const extraMins = colMap['HORA EXTRA'] ? (getMinsFromCell(row.getCell(colMap['HORA EXTRA']).value) || 0) : 0;
+      const tardanzaCol = colMap['TARDANZA'] || colMap['TARDANZAS'] || colMap['MINUTOS TARDANZA'];
 
       const empleadoId = empleadosMap.get(normName) || null;
       const displayName = originalNamesMap.get(normName) || nombreRaw;
@@ -220,20 +222,34 @@ export async function POST(request: Request) {
             nombre: displayName,
             fecha: fechaStr
           });
-        } else if (horarioCell && ingresoCell !== null && ingresoCell !== undefined) {
-          const parts = horarioCell.split('-');
-          if (parts.length >= 1) {
-            const expectedStartMins = getMinsFromCell(parts[0]);
-            let actualStartMins = getMinsFromCell(ingresoCell);
-            
-            if (actualStartMins > expectedStartMins) {
-              tardanzasMins = actualStartMins - expectedStartMins;
+        } else {
+          // Priority to direct Tardanza column from Excel
+          if (tardanzaCol && row.getCell(tardanzaCol).value != null) {
+            tardanzasMins = getMinsFromCell(row.getCell(tardanzaCol).value) || 0;
+            if (tardanzasMins > 0) {
               tardanzasPreview.push({
                 nombre: displayName,
                 fecha: fechaStr,
                 minutos: tardanzasMins,
-                hora_ingreso: getTimeString(ingresoCell)
+                hora_ingreso: getTimeString(ingresoCell) || '(Ver Excel)'
               });
+            }
+          } else if (horarioCell && ingresoCell !== null && ingresoCell !== undefined) {
+            // Fallback: Calculate from HORA INGRESO and HORARIO
+            const parts = horarioCell.split('-');
+            if (parts.length >= 1) {
+              const expectedStartMins = getMinsFromCell(parts[0]);
+              let actualStartMins = getMinsFromCell(ingresoCell);
+              
+              if (expectedStartMins !== null && actualStartMins !== null && actualStartMins > expectedStartMins) {
+                tardanzasMins = actualStartMins - expectedStartMins;
+                tardanzasPreview.push({
+                  nombre: displayName,
+                  fecha: fechaStr,
+                  minutos: tardanzasMins,
+                  hora_ingreso: getTimeString(ingresoCell)
+                });
+              }
             }
           }
         }
