@@ -11,7 +11,6 @@ type Permiso = {
   nombre_trabajador: string;
   fecha_permiso: string;
   motivo: string;
-  motivo: string;
   tipo_permiso: 'DIA' | 'HORAS';
   horas_permiso: string | null;
   estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';

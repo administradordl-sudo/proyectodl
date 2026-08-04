@@ -85,7 +85,7 @@ export default function EmployeesPage() {
   });
 
   const uniqueOptions = useMemo(() => {
-    const getOptions = (key: keyof Empleado) => Array.from(new Set(empleados.map(e => e[key]).filter(Boolean))).sort();
+    const getOptions = (key: keyof Empleado) => Array.from(new Set(empleados.map(e => e[key]).filter(Boolean))).sort() as string[];
     return {
       hijos: getOptions('hijos'),
       estado_civil: getOptions('estado_civil'),
@@ -99,7 +99,7 @@ export default function EmployeesPage() {
   const uniqueAreas = useMemo(() => {
     const hasDesconocida = empleados.some(e => !e.area || e.area.trim() === "");
     const areas = new Set(empleados.map(e => e.area).filter(Boolean));
-    const result = Array.from(areas).sort();
+    const result = Array.from(areas).sort() as string[];
     if (hasDesconocida) result.push("Desconocida");
     return result;
   }, [empleados]);
