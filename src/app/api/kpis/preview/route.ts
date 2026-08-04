@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Find header row
-    const possibleCols = ['NOMBRE', 'FECHA', 'HORARIO', 'HORA INGRESO', 'OBSERVACION', 'OBSERVACIONES', 'DESCRIPCION', 'HORA EXTRA', 'HORA NO LABORADA', 'TARDANZA', 'TARDANZAS', 'MINUTOS TARDANZA'];
+    const possibleCols = ['NOMBRE', 'FECHA', 'HORARIO', 'HORA INGRESO', 'HORA INGRESO ALMACEN', 'OBSERVACION', 'OBSERVACIONES', 'DESCRIPCION', 'HORA EXTRA', 'HORA NO LABORADA', 'TARDANZA', 'TARDANZAS', 'MINUTOS TARDANZA'];
     let headerRowIndex = -1;
     let colMap: Record<string, number> = {};
 
@@ -239,16 +239,38 @@ export async function POST(request: Request) {
             const parts = horarioCell.split('-');
             if (parts.length >= 1) {
               const expectedStartMins = getMinsFromCell(parts[0]);
+              let ingresoCellToUse = ingresoCell;
               let actualStartMins = getMinsFromCell(ingresoCell);
               
+              // Fix for biometric errors recording PM clock-outs as HORA INGRESO
+              const ingresoAlmacenCell = colMap['HORA INGRESO ALMACEN'] ? row.getCell(colMap['HORA INGRESO ALMACEN']).value : null;
+              if (ingresoAlmacenCell) {
+                const almacenStartMins = getMinsFromCell(ingresoAlmacenCell);
+                if (almacenStartMins !== null && almacenStartMins > 0) {
+                  // If original INGRESO is > 12:00 PM (720 mins) for a morning shift, it's likely a mistake.
+                  if (actualStartMins === null || actualStartMins > 720) {
+                    actualStartMins = almacenStartMins;
+                    ingresoCellToUse = ingresoAlmacenCell;
+                  } else {
+                    actualStartMins = Math.min(actualStartMins, almacenStartMins);
+                    if (actualStartMins === almacenStartMins) ingresoCellToUse = ingresoAlmacenCell;
+                  }
+                }
+              }
+
               if (expectedStartMins !== null && actualStartMins !== null && actualStartMins > expectedStartMins) {
+                // Ignore absurd tardiness > 8 hours (480 mins) -> this is definitely a missing clock-in
                 tardanzasMins = actualStartMins - expectedStartMins;
-                tardanzasPreview.push({
-                  nombre: displayName,
-                  fecha: fechaStr,
-                  minutos: tardanzasMins,
-                  hora_ingreso: getTimeString(ingresoCell)
-                });
+                if (tardanzasMins < 480) {
+                  tardanzasPreview.push({
+                    nombre: displayName,
+                    fecha: fechaStr,
+                    minutos: tardanzasMins,
+                    hora_ingreso: getTimeString(ingresoCellToUse)
+                  });
+                } else {
+                  tardanzasMins = 0; // Don't count as tardiness, it's just a bad record
+                }
               }
             }
           }
