@@ -26,6 +26,15 @@ export async function POST(request: Request) {
 
     const { data: vacacionesData } = await supabase.from('vacaciones').select('*').eq('estado', 'APROBADO');
 
+    const { data: cambiosHorarioData, error: cambiosHorarioError } = await supabase
+      .from('cambios_horario')
+      .select('*')
+      .eq('estado', 'APROBADO');
+
+    if (cambiosHorarioError) {
+      console.warn('Error fetching cambios_horario, proceeding without them:', cambiosHorarioError);
+    }
+
     if (permisosError) throw permisosError;
 
     // Build lookup maps
@@ -57,6 +66,22 @@ export async function POST(request: Request) {
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
           const dateStr = d.toISOString().split('T')[0];
           vacacionesMap.set(`${normalizeName(v.nombre_trabajador)}_${dateStr}`, v.motivo || 'Vacaciones');
+        }
+      });
+    }
+
+    const cambiosHorarioMap = new Map<string, any>();
+    if (cambiosHorarioData) {
+      cambiosHorarioData.forEach((c: any) => {
+        const start = new Date(c.fecha_inicio);
+        const end = new Date(c.fecha_fin);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = d.toISOString().split('T')[0];
+          cambiosHorarioMap.set(`${normalizeName(c.nombre_trabajador)}_${dateStr}`, {
+            ingreso: c.hora_ingreso,
+            salida: c.hora_salida,
+            motivo: c.motivo
+          });
         }
       });
     }
@@ -181,8 +206,47 @@ export async function POST(request: Request) {
         const isPermisoDia = permisoObj?.tipo === 'DIA';
         const permisoMins = (permisoObj?.tipo === 'HORAS' && permisoObj?.horas) ? (getMinsFromCell(permisoObj.horas) || 0) : 0;
         const motivoVacacion = vacacionesMap.get(`${normName}_${fechaStr}`);
+        const cambioHorario = cambiosHorarioMap.get(`${normName}_${fechaStr}`);
 
-        if (motivoVacacion) {
+        if (cambioHorario) {
+          labels.push(`CAMBIO HORARIO: ${cambioHorario.motivo}`);
+          
+          if (colMap['HORARIO']) {
+            row.getCell(colMap['HORARIO']).value = `${cambioHorario.ingreso} - ${cambioHorario.salida}`;
+          }
+
+          // Recalculate HORA LABORADA and HORA NO LABORADA based on actual punches if they exist
+          if (colMap['HORA INGRESO'] && colMap['HORA SALIDA']) {
+            const realIngresoMins = getMinsFromCell(row.getCell(colMap['HORA INGRESO']).value);
+            const realSalidaMins = getMinsFromCell(row.getCell(colMap['HORA SALIDA']).value);
+            const refrigerioMins = colMap['HORARIO REFRIGERIO'] ? (getMinsFromCell(row.getCell(colMap['HORARIO REFRIGERIO']).value) || 0) : 0;
+            const horaFijaMins = colMap['HORA FIJA'] ? getMinsFromCell(row.getCell(colMap['HORA FIJA']).value) : (getMinsFromCell(cambioHorario.salida) - getMinsFromCell(cambioHorario.ingreso) - refrigerioMins);
+            
+            if (realIngresoMins > 0 && realSalidaMins > 0) {
+              const realWorkedMins = realSalidaMins - realIngresoMins - refrigerioMins;
+              
+              if (colMap['HORA LABORADA']) {
+                row.getCell(colMap['HORA LABORADA']).value = minutesToTimeStr(realWorkedMins);
+              }
+              
+              if (colMap['HORA NO LABORADA']) {
+                if (realWorkedMins >= horaFijaMins) {
+                  row.getCell(colMap['HORA NO LABORADA']).value = '00:00:00';
+                } else {
+                  row.getCell(colMap['HORA NO LABORADA']).value = minutesToTimeStr(horaFijaMins - realWorkedMins);
+                }
+              }
+              
+              if (colMap['HORA EXTRA']) {
+                if (realWorkedMins > horaFijaMins) {
+                  row.getCell(colMap['HORA EXTRA']).value = minutesToTimeStr(realWorkedMins - horaFijaMins);
+                } else {
+                  row.getCell(colMap['HORA EXTRA']).value = '00:00:00';
+                }
+              }
+            }
+          }
+        } else if (motivoVacacion) {
           labels.push(`VACACIONES: ${motivoVacacion}`);
           isForgiven = true;
         } else if (motivoFeriado && (observacionActual.includes('FALTA') || !horarioCell)) {

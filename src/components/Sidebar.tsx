@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree, HeartPulse, ShieldCheck, FileBadge } from "lucide-react";
+import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree, HeartPulse, ShieldCheck, FileBadge, Clock } from "lucide-react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -33,6 +33,11 @@ const hrRoutes = [
     name: "Gestor Vacaciones",
     path: "/hr/vacations",
     icon: Palmtree,
+  },
+  {
+    name: "Cambios de Horario",
+    path: "/hr/schedule-changes",
+    icon: Clock,
   },
   {
     name: "Dashboard (KPIs)",
