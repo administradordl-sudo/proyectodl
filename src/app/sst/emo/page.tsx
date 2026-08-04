@@ -48,6 +48,7 @@ export default function EMOPage() {
   });
 
   const selectedEmpleado = empleados.find(e => e.id === formData.empleado_id);
+  const ultimoEmo = selectedEmpleado ? records.find(r => r.empleado_id === selectedEmpleado.id) : null;
 
   useEffect(() => {
     fetchEmpleados();
@@ -184,19 +185,31 @@ export default function EMOPage() {
                     </div>
 
                     {selectedEmpleado && (
-                      <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-200">
-                        <div>
-                          <p className="text-xs text-slate-500">DNI</p>
-                          <p className="font-medium text-slate-800">{selectedEmpleado.dni}</p>
+                      <div className="mt-4 pt-4 border-t border-slate-200">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-xs text-slate-500">DNI</p>
+                            <p className="font-medium text-slate-800">{selectedEmpleado.dni}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500">Puesto</p>
+                            <p className="font-medium text-slate-800">{selectedEmpleado.puesto || '-'}</p>
+                          </div>
+                          <div className="col-span-2">
+                            <p className="text-xs text-slate-500">Fecha de Ingreso</p>
+                            <p className="font-medium text-slate-800">{selectedEmpleado.fecha_ingreso}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs text-slate-500">Puesto</p>
-                          <p className="font-medium text-slate-800">{selectedEmpleado.puesto || '-'}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <p className="text-xs text-slate-500">Fecha de Ingreso</p>
-                          <p className="font-medium text-slate-800">{selectedEmpleado.fecha_ingreso}</p>
-                        </div>
+
+                        {ultimoEmo && (
+                          <div className="mt-4 p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
+                            <p className="text-xs font-semibold text-emerald-800 mb-1">Último Examen Registrado</p>
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-emerald-700">{ultimoEmo.fecha_examen}</span>
+                              <span className="font-medium text-emerald-900">{ultimoEmo.resultado}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
