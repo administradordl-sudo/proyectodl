@@ -37,6 +37,9 @@ export default function EPPPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const [equiposSeleccionados, setEquiposSeleccionados] = useState<string[]>([]);
+  const [otrosEquipos, setOtrosEquipos] = useState("");
+
   const [formData, setFormData] = useState({
     empleado_id: "",
     fecha_entrega: "",
@@ -103,8 +106,11 @@ export default function EPPPage() {
     }
 
     try {
+      const equiposFinal = [...equiposSeleccionados, otrosEquipos.trim()].filter(Boolean).join(', ');
+
       const payload = {
         ...formData,
+        equipo: equiposFinal,
         talla_calzado: formData.talla_calzado || null,
         talla_chaleco: formData.talla_chaleco || null,
         talla_casco: formData.talla_casco || null,
@@ -122,6 +128,8 @@ export default function EPPPage() {
 
       setRecords([data[0], ...records]);
       setIsAdding(false);
+      setEquiposSeleccionados([]);
+      setOtrosEquipos("");
       setFormData({
         empleado_id: "",
         fecha_entrega: "",
@@ -222,48 +230,78 @@ export default function EPPPage() {
                           className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                         />
                       </div>
-                      <div className="col-span-2 sm:col-span-1">
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Equipo(s) Entregado(s)</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Ej. Zapatos, Chaleco..."
-                          value={formData.equipo}
-                          onChange={e => setFormData({ ...formData, equipo: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                        />
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Equipo(s) Entregado(s)</label>
+                        <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                          {["Botas", "Casco", "Chaleco"].map((eq) => (
+                            <label key={eq} className="flex items-center gap-2 cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                                checked={equiposSeleccionados.includes(eq)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setEquiposSeleccionados([...equiposSeleccionados, eq]);
+                                  } else {
+                                    setEquiposSeleccionados(equiposSeleccionados.filter(item => item !== eq));
+                                    // Limpiar la talla si se desmarca
+                                    if (eq === "Botas") setFormData(prev => ({...prev, talla_calzado: ""}));
+                                    if (eq === "Casco") setFormData(prev => ({...prev, talla_casco: ""}));
+                                    if (eq === "Chaleco") setFormData(prev => ({...prev, talla_chaleco: ""}));
+                                  }
+                                }}
+                              />
+                              <span className="text-sm font-medium text-slate-700">{eq}</span>
+                            </label>
+                          ))}
+                          <div className="flex items-center gap-2 ml-auto">
+                             <input 
+                               type="text" 
+                               placeholder="Otros (Lentes, Guantes...)" 
+                               className="px-3 py-1.5 text-sm rounded border border-slate-200 focus:outline-none focus:border-emerald-500 w-48" 
+                               value={otrosEquipos} 
+                               onChange={e => setOtrosEquipos(e.target.value)}
+                             />
+                          </div>
+                        </div>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Talla Calzado</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Talla Calzado {equiposSeleccionados.includes("Botas") && <span className="text-emerald-500">*</span>}</label>
                         <input
                           type="text"
                           placeholder="Ej. 42"
+                          disabled={!equiposSeleccionados.includes("Botas")}
+                          required={equiposSeleccionados.includes("Botas")}
                           value={formData.talla_calzado}
                           onChange={e => setFormData({ ...formData, talla_calzado: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Talla Chaleco</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Talla Chaleco {equiposSeleccionados.includes("Chaleco") && <span className="text-emerald-500">*</span>}</label>
                         <input
                           type="text"
                           placeholder="Ej. M, L"
+                          disabled={!equiposSeleccionados.includes("Chaleco")}
+                          required={equiposSeleccionados.includes("Chaleco")}
                           value={formData.talla_chaleco}
                           onChange={e => setFormData({ ...formData, talla_chaleco: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Talla Casco</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Talla Casco {equiposSeleccionados.includes("Casco") && <span className="text-emerald-500">*</span>}</label>
                         <input
                           type="text"
                           placeholder="Ej. Estándar"
+                          disabled={!equiposSeleccionados.includes("Casco")}
+                          required={equiposSeleccionados.includes("Casco")}
                           value={formData.talla_casco}
                           onChange={e => setFormData({ ...formData, talla_casco: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
                         />
                       </div>
                     </div>
