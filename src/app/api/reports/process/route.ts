@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       .select('*')
       .eq('estado', 'APROBADO');
 
-    const { data: vacacionesData } = await supabase.from('vacaciones').select('*').eq('estado', 'APROBADO').catch(() => ({ data: [] }));
+    const { data: vacacionesData } = await supabase.from('vacaciones').select('*').eq('estado', 'APROBADO');
 
     if (permisosError) throw permisosError;
 

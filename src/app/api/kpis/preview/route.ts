@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
     const { data: feriadosData } = await supabase.from('feriados').select('*');
     const { data: permisosData } = await supabase.from('permisos').select('*').eq('estado', 'APROBADO');
-    const { data: vacacionesData } = await supabase.from('vacaciones').select('*').eq('estado', 'APROBADO').catch(() => ({ data: [] }));
+    const { data: vacacionesData } = await supabase.from('vacaciones').select('*').eq('estado', 'APROBADO');
 
     const normalizeName = (name: string) => {
       if (!name) return '';
