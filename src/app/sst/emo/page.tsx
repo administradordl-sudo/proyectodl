@@ -101,9 +101,15 @@ export default function EMOPage() {
     }
 
     try {
+      const payload = {
+        ...formData,
+        fecha_vencimiento: formData.fecha_vencimiento || null,
+        observaciones: formData.observaciones || null,
+      };
+
       const { data, error } = await supabase
         .from('sst_emo')
-        .insert([formData])
+        .insert([payload])
         .select('*, empleados(id, nombres, apellidos, dni, fecha_ingreso, puesto)');
 
       if (error) throw error;

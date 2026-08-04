@@ -95,9 +95,15 @@ export default function CarnetsPage() {
     }
 
     try {
+      const payload = {
+        ...formData,
+        fecha_emision: formData.fecha_emision || null,
+        fecha_vencimiento: formData.fecha_vencimiento || null,
+      };
+
       const { data, error } = await supabase
         .from('sst_carnet')
-        .insert([formData])
+        .insert([payload])
         .select('*, empleados(id, nombres, apellidos, dni, fecha_ingreso, puesto)');
 
       if (error) throw error;

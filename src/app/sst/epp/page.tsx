@@ -103,9 +103,19 @@ export default function EPPPage() {
     }
 
     try {
+      const payload = {
+        ...formData,
+        talla_calzado: formData.talla_calzado || null,
+        talla_chaleco: formData.talla_chaleco || null,
+        talla_casco: formData.talla_casco || null,
+        motivo_entrega: formData.motivo_entrega || null,
+        estado_firma: formData.estado_firma || null,
+        fecha_proxima_renovacion: formData.fecha_proxima_renovacion || null,
+      };
+
       const { data, error } = await supabase
         .from('sst_epp')
-        .insert([formData])
+        .insert([payload])
         .select('*, empleados(id, nombres, apellidos, dni, fecha_ingreso, puesto)');
 
       if (error) throw error;
