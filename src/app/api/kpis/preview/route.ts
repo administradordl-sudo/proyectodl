@@ -49,8 +49,8 @@ export async function POST(request: Request) {
       originalNamesMap.set(norm2, realName);
     });
 
-    const feriadosMap = new Set<string>();
-    feriadosData?.forEach((f) => feriadosMap.add(f.fecha));
+    const feriadosMap = new Map<string, string>();
+    feriadosData?.forEach((f) => feriadosMap.set(f.fecha, f.descripcion || 'Feriado'));
 
     const permisosMap = new Map<string, string>();
     permisosData?.forEach((p) => permisosMap.set(`${normalizeName(p.nombre_trabajador)}_${p.fecha_permiso}`, p.motivo || 'Permiso Aprobado'));
@@ -147,6 +147,7 @@ export async function POST(request: Request) {
     const faltasPreview: any[] = [];
     const tardanzasPreview: any[] = [];
     const permisosPreview: any[] = [];
+    const feriadosPreview: any[] = [];
     
     for (let r = headerRowIndex + 1; r <= rowCount; r++) {
       const row = worksheet.getRow(r);
@@ -168,15 +169,24 @@ export async function POST(request: Request) {
       let faltasDias = 0;
       let tardanzasMins = 0;
 
-      const isFeriado = feriadosMap.has(fechaStr);
+      const motivoFeriado = feriadosMap.get(fechaStr);
       const motivoPermiso = permisosMap.get(`${normName}_${fechaStr}`);
-      const isJustified = isFeriado || !!motivoPermiso;
+      const isJustified = !!motivoFeriado || !!motivoPermiso;
 
-      if (motivoPermiso) {
+      if (motivoPermiso && !motivoFeriado) {
         permisosPreview.push({
           nombre: displayName,
           fecha: fechaStr,
           motivo: motivoPermiso
+        });
+      }
+      
+      if (motivoFeriado && (observacion.includes('falta') || !horarioCell)) {
+        // Only track feriado if the employee was absent or didn't punch in, avoiding duplicating it for people who actually worked on a holiday
+        feriadosPreview.push({
+          nombre: displayName,
+          fecha: fechaStr,
+          motivo: motivoFeriado
         });
       }
 
@@ -225,6 +235,7 @@ export async function POST(request: Request) {
       faltasPreview,
       tardanzasPreview,
       permisosPreview,
+      feriadosPreview,
       asistenciasToUpsert 
     }, { status: 200 });
 

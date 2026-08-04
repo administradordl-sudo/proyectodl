@@ -24,6 +24,7 @@ type PreviewData = {
   faltasPreview: { nombre: string, fecha: string }[];
   tardanzasPreview: { nombre: string, fecha: string, minutos: number, hora_ingreso: string }[];
   permisosPreview: { nombre: string, fecha: string, motivo: string }[];
+  feriadosPreview: { nombre: string, fecha: string, motivo: string }[];
   asistenciasToUpsert: any[];
 };
 
@@ -362,7 +363,7 @@ export default function KpisPage() {
                       A continuación, un resumen agrupado por trabajador (se descartaron feriados).
                     </p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                       
                       <AccordionList 
                         title="Tardanzas"
@@ -406,6 +407,22 @@ export default function KpisPage() {
                             <span>{p.fecha}</span>
                             <span className="font-medium text-green-600 truncate max-w-[120px]" title={p.motivo}>
                               {p.motivo}
+                            </span>
+                          </div>
+                        )}
+                      />
+                      
+                      <AccordionList 
+                        title="Feriados Reconocidos"
+                        icon={Building2}
+                        items={previewData.feriadosPreview || []}
+                        containerBorderClass="border-blue-200"
+                        iconColorClass="text-blue-500"
+                        renderDetail={(f: any, i: number) => (
+                          <div key={i} className="flex justify-between items-center text-xs py-1.5 px-2 hover:bg-blue-50 rounded text-gray-600">
+                            <span>{f.fecha}</span>
+                            <span className="font-medium text-blue-600 truncate max-w-[120px]" title={f.motivo}>
+                              {f.motivo}
                             </span>
                           </div>
                         )}
