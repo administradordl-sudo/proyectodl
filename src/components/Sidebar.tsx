@@ -30,11 +30,6 @@ const hrRoutes = [
     icon: CalendarDays,
   },
   {
-    name: "Generar Reporte",
-    path: "/hr/reports",
-    icon: Upload,
-  },
-  {
     name: "Dashboard (KPIs)",
     path: "/hr/kpis",
     icon: BarChart3,
