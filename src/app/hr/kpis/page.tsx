@@ -12,6 +12,7 @@ type KpiData = {
   topAreasFaltas: any[];
   topAreasTardanzas: any[];
   diasFaltas: any[];
+  desconocidos: string[];
   resumen: {
     totalFaltas: number;
     totalTardanzasHoras: number;
@@ -606,6 +607,25 @@ export default function KpisPage() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
+          {data.desconocidos && data.desconocidos.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 shadow-sm mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+                <h3 className="text-lg font-bold text-amber-800">Personas no registradas en el sistema</h3>
+              </div>
+              <p className="text-sm text-amber-700 mb-4">
+                El sistema detectó los siguientes nombres en el Excel que no existen en el Directorio de Empleados (por lo que sus faltas se agrupan en "Desconocida"). Por favor, regístralos o verifica que estén escritos exactamente igual:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {data.desconocidos.map((name, idx) => (
+                  <span key={idx} className="bg-white border border-amber-200 text-amber-700 text-xs font-bold px-3 py-1.5 rounded-full">
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* General Overview Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">

@@ -24,6 +24,7 @@ export async function GET(request: Request) {
       topAreasFaltas: [],
       topAreasTardanzas: [],
       diasFaltas: [],
+      desconocidos: [],
       resumen: { totalFaltas: 0, totalTardanzasHoras: 0, totalExtrasHoras: 0 }
     };
 
@@ -102,6 +103,11 @@ export async function GET(request: Request) {
       .map(([dia, count]) => ({ dia: dia.charAt(0).toUpperCase() + dia.slice(1), count }))
       .sort((a, b) => b.count - a.count);
 
+    const desconocidos = Array.from(statsMap.values())
+      .filter(s => s.area === 'Desconocida')
+      .map(s => s.nombre)
+      .sort();
+
     return NextResponse.json({
       topTardanzas: topTardanzas.filter(e => e.tardanzasMins > 0),
       topFaltas: topFaltas.filter(e => e.faltasDias > 0),
@@ -109,6 +115,7 @@ export async function GET(request: Request) {
       topAreasFaltas: topAreasFaltas.filter(a => a.faltas > 0),
       topAreasTardanzas: topAreasTardanzas.filter(a => a.tardanzas > 0),
       diasFaltas: diasFaltasArr,
+      desconocidos,
       resumen: {
         totalFaltas: allEmployees.reduce((acc, e) => acc + e.faltasDias, 0),
         totalTardanzasHoras: Math.round(allEmployees.reduce((acc, e) => acc + e.tardanzasMins, 0) / 60),
