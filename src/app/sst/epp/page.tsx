@@ -53,6 +53,7 @@ export default function EPPPage() {
   });
 
   const selectedEmpleado = empleados.find(e => e.id === formData.empleado_id);
+  const ultimaEntrega = selectedEmpleado ? records.find(r => r.empleado_id === selectedEmpleado.id) : null;
 
   useEffect(() => {
     fetchEmpleados();
@@ -199,19 +200,31 @@ export default function EPPPage() {
                     </div>
 
                     {selectedEmpleado && (
-                      <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-200">
-                        <div>
-                          <p className="text-xs text-slate-500">DNI</p>
-                          <p className="font-medium text-slate-800">{selectedEmpleado.dni}</p>
+                      <div className="mt-4 pt-4 border-t border-slate-200">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-xs text-slate-500">DNI</p>
+                            <p className="font-medium text-slate-800">{selectedEmpleado.dni}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500">Puesto</p>
+                            <p className="font-medium text-slate-800">{selectedEmpleado.puesto || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500">Fecha de Ingreso</p>
+                            <p className="font-medium text-slate-800">{selectedEmpleado.fecha_ingreso}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs text-slate-500">Puesto</p>
-                          <p className="font-medium text-slate-800">{selectedEmpleado.puesto || '-'}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <p className="text-xs text-slate-500">Fecha de Ingreso</p>
-                          <p className="font-medium text-slate-800">{selectedEmpleado.fecha_ingreso}</p>
-                        </div>
+                        
+                        {ultimaEntrega && (
+                          <div className="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+                            <p className="text-xs font-semibold text-indigo-800 mb-1">Última Entrega Registrada</p>
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-indigo-700">{ultimaEntrega.fecha_entrega}</span>
+                              <span className="font-medium text-indigo-900">{ultimaEntrega.equipo}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -285,6 +298,19 @@ export default function EPPPage() {
                         </select>
                       </div>
                       <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Talla Casco {equiposSeleccionados.includes("Casco") && <span className="text-emerald-500">*</span>}</label>
+                        <input
+                          type="text"
+                          readOnly
+                          placeholder="Ej. Estándar"
+                          disabled={!equiposSeleccionados.includes("Casco")}
+                          required={equiposSeleccionados.includes("Casco")}
+                          value={formData.talla_casco}
+                          onChange={e => setFormData({ ...formData, talla_casco: e.target.value })}
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
+                        />
+                      </div>
+                      <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Talla Chaleco {equiposSeleccionados.includes("Chaleco") && <span className="text-emerald-500">*</span>}</label>
                         <select
                           disabled={!equiposSeleccionados.includes("Chaleco")}
@@ -298,19 +324,6 @@ export default function EPPPage() {
                             <option key={size} value={size}>{size}</option>
                           ))}
                         </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Talla Casco {equiposSeleccionados.includes("Casco") && <span className="text-emerald-500">*</span>}</label>
-                        <input
-                          type="text"
-                          readOnly
-                          placeholder="Ej. Estándar"
-                          disabled={!equiposSeleccionados.includes("Casco")}
-                          required={equiposSeleccionados.includes("Casco")}
-                          value={formData.talla_casco}
-                          onChange={e => setFormData({ ...formData, talla_casco: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
-                        />
                       </div>
                     </div>
 
