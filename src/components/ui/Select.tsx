@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export interface SelectOption {
@@ -41,7 +41,19 @@ export default function Select({
   onOptionDelete
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery('');
+    } else {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -62,6 +74,7 @@ export default function Select({
   };
 
   const selectedOption = options.find(opt => opt.value === value);
+  const filteredOptions = options.filter(opt => opt.label.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
@@ -111,6 +124,21 @@ export default function Select({
             className={`absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden py-1 max-h-60 overflow-y-auto ${dropdownClassName}`}
             style={{ minWidth: '100%' }}
           >
+            <div className="p-2 border-b border-gray-100 sticky top-0 bg-white z-10">
+              <div className="relative">
+                <Search className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Buscar..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            </div>
+
             <div
               className={`px-3 py-2 text-sm cursor-pointer transition-colors ${
                 !value || value === ''
@@ -122,7 +150,13 @@ export default function Select({
               {placeholder}
             </div>
             
-            {options.map((option) => (
+            {filteredOptions.length === 0 && searchQuery && (
+              <div className="px-3 py-3 text-sm text-gray-500 text-center italic">
+                No se encontraron resultados
+              </div>
+            )}
+            
+            {filteredOptions.map((option) => (
               <div
                 key={option.value}
                 className={`group flex items-center justify-between px-3 py-2 text-sm cursor-pointer transition-colors ${

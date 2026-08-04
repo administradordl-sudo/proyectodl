@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Plus, ShieldCheck, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
+import Select from "@/components/ui/Select";
 
 type Empleado = {
   id: string;
@@ -169,19 +170,14 @@ export default function EPPPage() {
                     <h4 className="font-medium text-slate-700 mb-2">1. Datos del Empleado</h4>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">Seleccionar Empleado</label>
-                      <select
+                      <Select
                         required
                         value={formData.empleado_id}
                         onChange={e => setFormData({ ...formData, empleado_id: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                      >
-                        <option value="">Seleccione...</option>
-                        {empleados.map(emp => (
-                          <option key={emp.id} value={emp.id}>
-                            {emp.nombres} {emp.apellidos} - {emp.dni}
-                          </option>
-                        ))}
-                      </select>
+                        options={empleados.map(emp => ({ value: emp.id, label: `${emp.nombres} ${emp.apellidos} - ${emp.dni}` }))}
+                        placeholder="Seleccione..."
+                        triggerClassName="w-full px-4 py-2.5 rounded-lg border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+                      />
                     </div>
 
                     {selectedEmpleado && (
