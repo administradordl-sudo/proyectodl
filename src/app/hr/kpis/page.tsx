@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Upload, FileSpreadsheet, Loader2, AlertCircle, TrendingUp, Clock, AlertTriangle, Building2, Users, Database, CheckCircle2, ChevronDown, ChevronUp, ShieldCheck, Download } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, AlertCircle, TrendingUp, Clock, AlertTriangle, Building2, Users, Database, CheckCircle2, ChevronDown, ChevronUp, ShieldCheck, Download, Palmtree } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 
@@ -26,6 +26,7 @@ type PreviewData = {
   tardanzasPreview: { nombre: string, fecha: string, minutos: number, hora_ingreso: string }[];
   permisosPreview: { nombre: string, fecha: string, motivo: string }[];
   feriadosPreview: { nombre: string, fecha: string, motivo: string }[];
+  vacacionesPreview: { nombre: string, fecha: string, motivo: string }[];
   asistenciasToUpsert: any[];
 };
 
@@ -452,21 +453,47 @@ export default function KpisPage() {
                         )}
                       />
                       
-                      <AccordionList 
-                        title="Feriados Reconocidos"
-                        icon={Building2}
-                        items={previewData.feriadosPreview || []}
-                        containerBorderClass="border-blue-200"
-                        iconColorClass="text-blue-500"
-                        renderDetail={(f: any, i: number) => (
-                          <div key={i} className="flex justify-between items-center text-xs py-1.5 px-2 hover:bg-blue-50 rounded text-gray-600">
-                            <span>{f.fecha}</span>
-                            <span className="font-medium text-blue-600 truncate max-w-[120px]" title={f.motivo}>
-                              {f.motivo}
-                            </span>
+                      {/* Columna Dividida: Feriados y Vacaciones */}
+                      <div className="flex flex-col gap-4">
+                        {/* Feriados: Solo lista estática sin agrupar por nombres */}
+                        <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-200">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Building2 className="w-4 h-4 text-blue-500" />
+                            <h5 className="font-semibold text-gray-900">Feriados Reconocidos</h5>
                           </div>
-                        )}
-                      />
+                          <div className="max-h-[160px] overflow-y-auto space-y-2 pr-2">
+                            {!previewData.feriadosPreview || previewData.feriadosPreview.length === 0 ? (
+                              <p className="text-sm text-gray-500 italic">No hay feriados.</p>
+                            ) : (
+                              Array.from(new Map(previewData.feriadosPreview.map((f: any) => [f.fecha, f])).values()).map((f: any, i: number) => (
+                                <div key={i} className="flex justify-between items-center text-xs py-2 px-2 bg-gray-50 border border-gray-100 rounded text-gray-600">
+                                  <span>{f.fecha}</span>
+                                  <span className="font-bold text-blue-600 truncate max-w-[120px]" title={f.motivo}>
+                                    {f.motivo}
+                                  </span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Vacaciones */}
+                        <AccordionList 
+                          title="Vacaciones"
+                          icon={Palmtree}
+                          items={previewData.vacacionesPreview || []}
+                          containerBorderClass="border-cyan-200"
+                          iconColorClass="text-cyan-500"
+                          renderDetail={(v: any, i: number) => (
+                            <div key={i} className="flex justify-between items-center text-xs py-1.5 px-2 hover:bg-cyan-50 rounded text-gray-600">
+                              <span>{v.fecha}</span>
+                              <span className="font-medium text-cyan-600 truncate max-w-[120px]" title={v.motivo}>
+                                {v.motivo}
+                              </span>
+                            </div>
+                          )}
+                        />
+                      </div>
 
                     </div>
                   </div>
