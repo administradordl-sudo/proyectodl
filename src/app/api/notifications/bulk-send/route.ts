@@ -10,14 +10,15 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 // Se inicializa con una llave temporal si no existe, para evitar que Vercel cancele el 'build'
 const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key_for_build')
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || 'mailto:admin@empresa.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'dummy_public_key_for_build_only_1234567890123456789012345678901234567890123',
-  process.env.VAPID_PRIVATE_KEY || 'dummy_private_key_for_build_only_12345678901'
-)
-
 export async function POST(req: Request) {
   try {
+    // Configurar webpush aquí adentro asegura que Vercel no intente evaluarlo en el build
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || 'mailto:admin@empresa.com',
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+      process.env.VAPID_PRIVATE_KEY!
+    )
+
     const { audience, audienceValue, title, message, sendPush, sendEmail } = await req.json()
 
     if (!title || !message) {
