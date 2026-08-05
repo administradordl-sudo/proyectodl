@@ -7,7 +7,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY! || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Se inicializa con una llave temporal si no existe, para evitar que Vercel cancele el 'build'
+const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key_for_build')
 
 webpush.setVapidDetails(
   process.env.VAPID_SUBJECT || 'mailto:admin@empresa.com',
