@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree, HeartPulse, ShieldCheck, FileBadge, Clock } from "lucide-react";
+import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree, HeartPulse, ShieldCheck, FileBadge, Clock, Bell } from "lucide-react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
+import { InstallAppButton } from "@/components/ui/InstallAppButton";
 
 const hrRoutes = [
   {
@@ -44,6 +45,11 @@ const hrRoutes = [
     path: "/hr/kpis",
     icon: BarChart3,
   },
+  {
+    name: "Enviar Notificación",
+    path: "/hr/notifications",
+    icon: Bell,
+  },
 ];
 
 const mantenimientoRoutes = [
@@ -62,6 +68,11 @@ const mantenimientoRoutes = [
     path: "/mantenimiento/kpis",
     icon: BarChart3,
   },
+  {
+    name: "Enviar Notificación",
+    path: "/mantenimiento/notifications",
+    icon: Bell,
+  },
 ];
 
 const sstRoutes = [
@@ -79,6 +90,11 @@ const sstRoutes = [
     name: "Carnets de Sanidad",
     path: "/sst/carnets",
     icon: FileBadge,
+  },
+  {
+    name: "Enviar Notificación",
+    path: "/sst/notifications",
+    icon: Bell,
   },
 ];
 
@@ -222,7 +238,8 @@ export function Sidebar() {
       </nav>
       
       <div className="p-4 border-t border-gray-100">
-        <div className="flex items-center gap-3 px-4 py-2">
+        <InstallAppButton />
+        <div className="flex items-center gap-3 px-4 py-2 mt-2">
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
             U
           </div>

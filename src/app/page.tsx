@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Users, Wrench, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
+import { InstallAppButton } from "@/components/ui/InstallAppButton";
 
 export default function Home() {
   return (
@@ -20,9 +21,15 @@ export default function Home() {
         <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-3">
           DICAR LOGISTIC
         </h1>
-        <p className="text-base text-slate-500 max-w-lg mx-auto">
+        <p className="text-base text-slate-500 max-w-lg mx-auto mb-6">
           Selecciona el módulo al que deseas acceder. Cada sección está optimizada para tus tareas diarias.
         </p>
+        
+        <div className="flex justify-center">
+          <div className="w-[200px]">
+            <InstallAppButton />
+          </div>
+        </div>
       </motion.div>
 
       <div className="flex flex-col md:flex-row justify-center items-stretch gap-4 w-full max-w-6xl px-2">
