@@ -9,8 +9,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 webpush.setVapidDetails(
   process.env.VAPID_SUBJECT || 'mailto:test@example.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'dummy_public_key_for_build_only_1234567890123456789012345678901234567890123',
+  process.env.VAPID_PRIVATE_KEY || 'dummy_private_key_for_build_only_12345678901'
 )
 
 export async function POST(req: Request) {
