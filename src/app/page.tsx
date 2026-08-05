@@ -2,39 +2,39 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Users, Wrench, ShieldCheck } from "lucide-react";
+import { Users, Wrench, ShieldCheck, UserCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
 
 export default function Home() {
   return (
-    <div className="min-h-[85vh] flex flex-col items-center justify-center">
+    <div className="min-h-[80vh] flex flex-col items-center justify-center py-4">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="text-center mb-10"
+        className="text-center mb-6"
       >
-        <div className="flex justify-center mb-4">
-          <Image src="/logo.png" alt="Logo" width={60} height={60} className="object-contain" />
+        <div className="flex justify-center mb-2">
+          <Image src="/logo.png" alt="Logo" width={50} height={50} className="object-contain" />
         </div>
-        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-3">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
           DICAR LOGISTIC
         </h1>
-        <p className="text-base text-slate-500 max-w-lg mx-auto mb-6">
+        <p className="text-sm sm:text-base text-slate-500 max-w-lg mx-auto mb-4 px-4">
           Selecciona el módulo al que deseas acceder. Cada sección está optimizada para tus tareas diarias.
         </p>
         
         <div className="flex justify-center">
-          <div className="w-[200px]">
+          <div className="w-[180px]">
             <InstallAppButton />
           </div>
         </div>
       </motion.div>
 
-      <div className="flex flex-col md:flex-row justify-center items-stretch gap-4 w-full max-w-6xl px-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-6xl px-4">
         {/* Módulo Recursos Humanos */}
-        <Link href="/hr/requests" className="w-full md:w-1/3">
+        <Link href="/hr/requests" className="w-full">
           <motion.div
             whileHover={{ y: -8, scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -60,7 +60,7 @@ export default function Home() {
         </Link>
 
         {/* Módulo Mantenimiento */}
-        <Link href="/mantenimiento" className="w-full md:w-1/3">
+        <Link href="/mantenimiento" className="w-full">
           <motion.div
             whileHover={{ y: -8, scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -86,7 +86,7 @@ export default function Home() {
         </Link>
 
         {/* Módulo SST */}
-        <Link href="/sst/emo" className="w-full md:w-1/3">
+        <Link href="/sst/emo" className="w-full">
           <motion.div
             whileHover={{ y: -8, scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -105,6 +105,32 @@ export default function Home() {
             
             <div className="mt-auto pt-4 w-full">
               <div className="w-full py-2.5 rounded-lg bg-emerald-600 text-white font-semibold text-[11px] sm:text-xs text-center shadow-md opacity-100 sm:opacity-0 transform sm:translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                Acceder al Módulo →
+              </div>
+            </div>
+          </motion.div>
+        </Link>
+
+        {/* Módulo Vigilancia */}
+        <Link href="/vigilancia/visitas" className="w-full">
+          <motion.div
+            whileHover={{ y: -8, scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="relative overflow-hidden group rounded-2xl bg-white p-4 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 h-full flex flex-col items-center text-center cursor-pointer transition-all hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] hover:border-amber-500/30"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-amber-500/10 rounded-xl flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-amber-500/20 transition-colors duration-300">
+              <UserCheck className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" />
+            </div>
+            
+            <h2 className="text-base sm:text-xl font-bold text-slate-900 mb-2">Vigilancia</h2>
+            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed hidden sm:block">
+              Registro de visitas, validación de acuerdos de seguridad y control de accesos a planta.
+            </p>
+            
+            <div className="mt-auto pt-4 w-full">
+              <div className="w-full py-2.5 rounded-lg bg-amber-600 text-white font-semibold text-[11px] sm:text-xs text-center shadow-md opacity-100 sm:opacity-0 transform sm:translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
                 Acceder al Módulo →
               </div>
             </div>

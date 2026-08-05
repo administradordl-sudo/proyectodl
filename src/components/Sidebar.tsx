@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree, HeartPulse, ShieldCheck, FileBadge, Clock, Bell } from "lucide-react";
+import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree, HeartPulse, ShieldCheck, FileBadge, Clock, Bell, UserCheck, BookOpen } from "lucide-react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
@@ -92,9 +92,22 @@ const sstRoutes = [
     icon: FileBadge,
   },
   {
+    name: "Acuerdos de Seguridad",
+    path: "/sst/acuerdos",
+    icon: BookOpen,
+  },
+  {
     name: "Enviar Notificación",
     path: "/sst/notifications",
     icon: Bell,
+  },
+];
+
+const vigilanciaRoutes = [
+  {
+    name: "Registro de Visitas",
+    path: "/vigilancia/visitas",
+    icon: UserCheck,
   },
 ];
 
@@ -111,7 +124,8 @@ export function Sidebar() {
 
   const isMantenimiento = pathname.startsWith("/mantenimiento");
   const isSST = pathname.startsWith("/sst");
-  const routes = isMantenimiento ? mantenimientoRoutes : isSST ? sstRoutes : hrRoutes;
+  const isVigilancia = pathname.startsWith("/vigilancia");
+  const routes = isVigilancia ? vigilanciaRoutes : isMantenimiento ? mantenimientoRoutes : isSST ? sstRoutes : hrRoutes;
 
   return (
     <>
