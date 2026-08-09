@@ -41,6 +41,24 @@ export async function subscribeToPushNotifications(email: string) {
     })
   }
 
+  // Extract browser and OS information
+  let os = 'Unknown'
+  let browser = 'Unknown'
+  
+  if (typeof window !== 'undefined' && window.navigator) {
+    const ua = window.navigator.userAgent
+    if (ua.indexOf('Win') !== -1) os = 'Windows'
+    else if (ua.indexOf('Mac') !== -1) os = 'MacOS'
+    else if (ua.indexOf('Linux') !== -1) os = 'Linux'
+    else if (ua.indexOf('Android') !== -1) os = 'Android'
+    else if (ua.indexOf('like Mac') !== -1) os = 'iOS'
+    
+    if (ua.indexOf('Chrome') !== -1) browser = 'Chrome'
+    else if (ua.indexOf('Safari') !== -1) browser = 'Safari'
+    else if (ua.indexOf('Firefox') !== -1) browser = 'Firefox'
+    else if (ua.indexOf('Edge') !== -1) browser = 'Edge'
+  }
+
   // Send subscription to our backend
   const response = await fetch('/api/notifications/push/subscribe', {
     method: 'POST',
@@ -50,6 +68,9 @@ export async function subscribeToPushNotifications(email: string) {
     body: JSON.stringify({
       subscription,
       email,
+      os,
+      browser,
+      device_model: typeof window !== 'undefined' ? window.navigator.userAgent : 'Unknown'
     }),
   })
 

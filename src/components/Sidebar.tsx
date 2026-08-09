@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree, HeartPulse, ShieldCheck, FileBadge, Clock, Bell, UserCheck, BookOpen } from "lucide-react";
+import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree, HeartPulse, ShieldCheck, FileBadge, Clock, Bell, UserCheck, BookOpen, PackageCheck, ShieldAlert } from "lucide-react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
@@ -87,6 +87,11 @@ const sstRoutes = [
     icon: ShieldCheck,
   },
   {
+    name: "Almacén EPP",
+    path: "/sst/epp/almacen",
+    icon: PackageCheck,
+  },
+  {
     name: "Carnets de Sanidad",
     path: "/sst/carnets",
     icon: FileBadge,
@@ -111,6 +116,19 @@ const vigilanciaRoutes = [
   },
 ];
 
+const adminRoutes = [
+  {
+    name: "Auditoría de Sistema",
+    path: "/admin/auditoria",
+    icon: ShieldAlert,
+  },
+  {
+    name: "Gestión de Usuarios",
+    path: "/admin/usuarios",
+    icon: Users,
+  },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -122,10 +140,11 @@ export function Sidebar() {
 
   if (pathname === "/") return null;
 
+  const isAdmin = pathname.startsWith("/admin");
   const isMantenimiento = pathname.startsWith("/mantenimiento");
   const isSST = pathname.startsWith("/sst");
   const isVigilancia = pathname.startsWith("/vigilancia");
-  const routes = isVigilancia ? vigilanciaRoutes : isMantenimiento ? mantenimientoRoutes : isSST ? sstRoutes : hrRoutes;
+  const routes = isAdmin ? adminRoutes : isVigilancia ? vigilanciaRoutes : isMantenimiento ? mantenimientoRoutes : isSST ? sstRoutes : hrRoutes;
 
   return (
     <>

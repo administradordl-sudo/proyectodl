@@ -8,7 +8,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function POST(req: Request) {
   try {
-    const { subscription, email } = await req.json()
+    const { subscription, email, os, browser, device_model } = await req.json()
 
     if (!subscription || !subscription.endpoint || !email) {
       return NextResponse.json({ error: 'Faltan datos de suscripción o correo' }, { status: 400 })
@@ -24,6 +24,9 @@ export async function POST(req: Request) {
           endpoint: subscription.endpoint,
           p256dh: subscription.keys.p256dh,
           auth: subscription.keys.auth,
+          os: os || null,
+          browser: browser || null,
+          device_model: device_model || null,
         },
       ])
 

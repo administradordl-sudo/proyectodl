@@ -38,6 +38,64 @@ export async function createTicket(formData: FormData, evidencia_url: string | n
       return { error: error.message };
     }
 
+    // ------------------------------------------------------------------
+    // NOTIFICAR A LOS DE MANTENIMIENTO
+    // ------------------------------------------------------------------
+    try {
+      const webpush = require('web-push');
+      webpush.setVapidDetails(
+        process.env.VAPID_SUBJECT || 'mailto:admin@empresa.com',
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+        process.env.VAPID_PRIVATE_KEY!
+      );
+
+      // Buscar empleados que tengan puesto que incluya MANTENIMIENTO
+      const { data: empleados } = await supabase
+        .from('empleados')
+        .select('email, correo_personal')
+        .ilike('puesto', '%MANTENIMIENTO%');
+
+      if (empleados && empleados.length > 0) {
+        const targetEmails = new Set<string>();
+        empleados.forEach(emp => {
+          if (emp.email) targetEmails.add(emp.email.toLowerCase().trim());
+          if (emp.correo_personal) targetEmails.add(emp.correo_personal.toLowerCase().trim());
+        });
+
+        if (targetEmails.size > 0) {
+          const { data: subs } = await supabase
+            .from('push_subscriptions')
+            .select('*')
+            .in('email', Array.from(targetEmails));
+
+          if (subs && subs.length > 0) {
+            const payload = JSON.stringify({
+              title: 'Nuevo Ticket de Mantenimiento',
+              body: `Se ha creado el ticket: ${titulo}`,
+              url: '/mantenimiento',
+              icon: '/logo.png'
+            });
+
+            await Promise.allSettled(
+              subs.map(async (sub) => {
+                const pushSubscription = {
+                  endpoint: sub.endpoint,
+                  keys: {
+                    p256dh: sub.p256dh,
+                    auth: sub.auth
+                  }
+                };
+                await webpush.sendNotification(pushSubscription, payload);
+              })
+            );
+          }
+        }
+      }
+    } catch (pushErr) {
+      console.error('Error silencioso al enviar Push en nuevo ticket:', pushErr);
+    }
+    // ------------------------------------------------------------------
+
     revalidatePath('/mantenimiento');
     return { success: true, data };
   } catch (error: any) {

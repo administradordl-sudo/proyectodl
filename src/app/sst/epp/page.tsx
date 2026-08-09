@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, ShieldCheck, Search } from "lucide-react";
+import { Plus, ShieldCheck, Search, PackageCheck, AlertTriangle, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 import Select from "@/components/ui/Select";
+import Link from "next/link";
 
 type Empleado = {
   id: string;
@@ -16,48 +17,53 @@ type Empleado = {
   puesto: string;
 };
 
-type EppRecord = {
+type EppItem = {
+  id: string;
+  nombre: string;
+  stock_actual: number;
+};
+
+type EppTransaction = {
+  id: string;
+  cantidad: number;
+  epp_items: { nombre: string };
+};
+
+type EppEntrega = {
   id: string;
   empleado_id: string;
   fecha_entrega: string;
-  equipo: string;
-  talla_calzado: string;
-  talla_chaleco: string;
-  talla_casco: string;
   motivo_entrega: string;
   estado_firma: string;
   fecha_proxima_renovacion: string;
   empleados?: Empleado;
+  epp_transactions?: EppTransaction[];
 };
 
 export default function EPPPage() {
-  const [records, setRecords] = useState<EppRecord[]>([]);
+  const [entregas, setEntregas] = useState<EppEntrega[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
+  const [eppItems, setEppItems] = useState<EppItem[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const [equiposSeleccionados, setEquiposSeleccionados] = useState<string[]>([]);
-  const [otrosEquipos, setOtrosEquipos] = useState("");
-
   const [formData, setFormData] = useState({
     empleado_id: "",
     fecha_entrega: new Date().toISOString().split('T')[0],
-    equipo: "",
-    talla_calzado: "",
-    talla_chaleco: "",
-    talla_casco: "",
     motivo_entrega: "Nuevo Ingreso",
     estado_firma: "Entregado",
     fecha_proxima_renovacion: ""
   });
 
-  const selectedEmpleado = empleados.find(e => e.id === formData.empleado_id);
-  const ultimaEntrega = selectedEmpleado ? records.find(r => r.empleado_id === selectedEmpleado.id) : null;
+  // Items seleccionados para entregar
+  const [selectedItems, setSelectedItems] = useState<{ id: string; epp_item_id: string; cantidad: number }[]>([]);
 
   useEffect(() => {
     fetchEmpleados();
-    fetchRecords();
+    fetchEppItems();
+    fetchEntregas();
   }, []);
 
   const fetchEmpleados = async () => {
@@ -75,28 +81,50 @@ export default function EPPPage() {
     }
   };
 
-  const fetchRecords = async () => {
+  const fetchEppItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('epp_items')
+        .select('id, nombre, stock_actual')
+        .order('nombre');
+      if (error) throw error;
+      setEppItems(data || []);
+    } catch (error: any) {
+      if (error.code !== '42P01') console.error("Error fetching items:", error);
+    }
+  };
+
+  const fetchEntregas = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('sst_epp')
-        .select('*, empleados(id, nombres, apellidos, dni, fecha_ingreso, puesto)')
+        .select(`
+          *,
+          empleados(id, nombres, apellidos, dni, fecha_ingreso, puesto),
+          epp_transactions(id, cantidad, epp_items(nombre))
+        `)
         .order('fecha_entrega', { ascending: false });
       
-      if (error) {
-        if (error.code === '42P01') {
-          console.warn("Tabla sst_epp no existe aún.");
-        } else {
-          throw error;
-        }
-      } else {
-        setRecords(data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching EPP records:", error);
+      if (error) throw error;
+      setEntregas(data || []);
+    } catch (error: any) {
+      if (error.code !== '42P01') console.error("Error fetching EPP records:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddItemToDelivery = () => {
+    setSelectedItems([...selectedItems, { id: Date.now().toString(), epp_item_id: "", cantidad: 1 }]);
+  };
+
+  const updateDeliveryItem = (id: string, field: string, value: string | number) => {
+    setSelectedItems(selectedItems.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+
+  const removeDeliveryItem = (id: string) => {
+    setSelectedItems(selectedItems.filter(item => item.id !== id));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,50 +133,68 @@ export default function EPPPage() {
       alert("Seleccione un empleado.");
       return;
     }
+    if (selectedItems.length === 0 || selectedItems.some(i => !i.epp_item_id)) {
+      alert("Debe seleccionar al menos un equipo de protección para entregar.");
+      return;
+    }
 
     try {
-      const equiposFinal = [...equiposSeleccionados, otrosEquipos.trim()].filter(Boolean).join(', ');
-
-      const payload = {
-        ...formData,
-        equipo: equiposFinal,
-        talla_calzado: formData.talla_calzado || null,
-        talla_chaleco: formData.talla_chaleco || null,
-        talla_casco: formData.talla_casco || null,
+      // 1. Crear Cabecera de Entrega
+      const payloadCabecera = {
+        empleado_id: formData.empleado_id,
+        fecha_entrega: formData.fecha_entrega,
         motivo_entrega: formData.motivo_entrega || null,
         estado_firma: formData.estado_firma || null,
         fecha_proxima_renovacion: formData.fecha_proxima_renovacion || null,
       };
 
-      const { data, error } = await supabase
+      const { data: entregaData, error: entregaError } = await supabase
         .from('sst_epp')
-        .insert([payload])
-        .select('*, empleados(id, nombres, apellidos, dni, fecha_ingreso, puesto)');
+        .insert([payloadCabecera])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (entregaError) throw entregaError;
 
-      setRecords([data[0], ...records]);
+      const entregaId = entregaData.id;
+
+      // 2. Crear Transacciones (Salidas)
+      const transaccionesPayload = selectedItems.map(item => ({
+        epp_item_id: item.epp_item_id,
+        tipo_movimiento: 'SALIDA',
+        cantidad: item.cantidad,
+        entrega_id: entregaId,
+        motivo: `Entrega a empleado - ${formData.motivo_entrega}`,
+      }));
+
+      const { error: txError } = await supabase
+        .from('epp_transactions')
+        .insert(transaccionesPayload);
+
+      if (txError) throw txError;
+
+      // 3. Refrescar Datos
+      fetchEntregas();
+      fetchEppItems(); // Refrescar stock
+      
       setIsAdding(false);
-      setEquiposSeleccionados([]);
-      setOtrosEquipos("");
+      setSelectedItems([]);
       setFormData({
         empleado_id: "",
         fecha_entrega: new Date().toISOString().split('T')[0],
-        equipo: "",
-        talla_calzado: "",
-        talla_chaleco: "",
-        talla_casco: "",
         motivo_entrega: "Nuevo Ingreso",
         estado_firma: "Entregado",
         fecha_proxima_renovacion: ""
       });
-    } catch (error) {
+      alert("Entrega registrada con éxito.");
+
+    } catch (error: any) {
       console.error("Error saving EPP:", error);
-      alert("Error al guardar el registro. Verifique que ejecutó el código SQL.");
+      alert(error.message || "Error al guardar el registro. Asegúrese de que hay stock suficiente.");
     }
   };
 
-  const filteredRecords = records.filter(record => 
+  const filteredRecords = entregas.filter(record => 
     `${record.empleados?.nombres} ${record.empleados?.apellidos}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     record.empleados?.dni?.includes(searchTerm)
   );
@@ -157,25 +203,30 @@ export default function EPPPage() {
     <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Registro de EPP</h1>
-          <p className="text-slate-500 mt-2">Control de entrega de Equipos de Protección Personal</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Registro de Entregas EPP</h1>
+          <p className="text-slate-500 mt-2">Control de entrega de Equipos de Protección Personal a trabajadores</p>
         </div>
-        <button
-          onClick={() => setIsAdding(!isAdding)}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors whitespace-nowrap text-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Nueva Entrega
-        </button>
+        <div className="flex gap-3">
+          <Link href="/sst/epp/almacen" className="bg-white border border-slate-200 hover:border-slate-300 text-slate-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors text-sm shadow-sm">
+            <PackageCheck className="w-4 h-4 text-blue-600" />
+            Ir a Almacén EPP
+          </Link>
+          <button
+            onClick={() => setIsAdding(!isAdding)}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors whitespace-nowrap text-sm shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Nueva Entrega
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
         {isAdding && (
           <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, height: 0, overflow: 'hidden' }} 
+            animate={{ opacity: 1, height: 'auto', transitionEnd: { overflow: 'visible' } }} 
+            exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
           >
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 mb-6">
               <h3 className="text-lg font-semibold mb-6 text-slate-800 flex items-center gap-2">
@@ -185,7 +236,8 @@ export default function EPPPage() {
               
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  {/* Columna Izquierda: Datos del Empleado */}
+                  <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-100 h-fit">
                     <h4 className="font-medium text-slate-700 mb-2">1. Datos del Empleado</h4>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">Seleccionar Empleado</label>
@@ -194,165 +246,105 @@ export default function EPPPage() {
                         value={formData.empleado_id}
                         onChange={e => setFormData({ ...formData, empleado_id: e.target.value })}
                         options={empleados.map(emp => ({ value: emp.id, label: `${emp.nombres} ${emp.apellidos} - ${emp.dni}` }))}
-                        placeholder="Seleccione..."
-                        triggerClassName="w-full px-4 py-2.5 rounded-lg border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+                        placeholder="Seleccione un empleado..."
+                        triggerClassName="w-full px-4 py-2.5 rounded-lg border-slate-200 bg-white"
                       />
                     </div>
-
-                    {selectedEmpleado && (
-                      <div className="mt-4 pt-4 border-t border-slate-200">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-xs text-slate-500">DNI</p>
-                            <p className="font-medium text-slate-800">{selectedEmpleado.dni}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-slate-500">Puesto</p>
-                            <p className="font-medium text-slate-800">{selectedEmpleado.puesto || '-'}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-slate-500">Fecha de Ingreso</p>
-                            <p className="font-medium text-slate-800">{selectedEmpleado.fecha_ingreso}</p>
-                          </div>
-                        </div>
-                        
-                        {ultimaEntrega && (
-                          <div className="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
-                            <p className="text-xs font-semibold text-indigo-800 mb-1">Última Entrega Registrada</p>
-                            <div className="flex justify-between items-center text-sm">
-                              <span className="text-indigo-700">{ultimaEntrega.fecha_entrega}</span>
-                              <span className="font-medium text-indigo-900">{ultimaEntrega.equipo}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-slate-700 mb-2">2. Datos de la Entrega</h4>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de Entrega</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Fecha Entrega</label>
                         <input
                           type="date"
                           required
                           value={formData.fecha_entrega}
-                          onChange={e => setFormData({ ...formData, fecha_entrega: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                          onChange={e => setFormData({...formData, fecha_entrega: e.target.value})}
+                          className="w-full px-4 py-2 rounded-lg border border-slate-200 bg-white"
                         />
                       </div>
-                      <div className="col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Equipo(s) Entregado(s)</label>
-                        <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                          {["Botas", "Casco", "Chaleco"].map((eq) => (
-                            <label key={eq} className="flex items-center gap-2 cursor-pointer">
-                              <input 
-                                type="checkbox" 
-                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
-                                checked={equiposSeleccionados.includes(eq)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setEquiposSeleccionados([...equiposSeleccionados, eq]);
-                                    if (eq === "Casco") setFormData(prev => ({...prev, talla_casco: "Estándar"}));
-                                  } else {
-                                    setEquiposSeleccionados(equiposSeleccionados.filter(item => item !== eq));
-                                    // Limpiar la talla si se desmarca
-                                    if (eq === "Botas") setFormData(prev => ({...prev, talla_calzado: ""}));
-                                    if (eq === "Casco") setFormData(prev => ({...prev, talla_casco: ""}));
-                                    if (eq === "Chaleco") setFormData(prev => ({...prev, talla_chaleco: ""}));
-                                  }
-                                }}
-                              />
-                              <span className="text-sm font-medium text-slate-700">{eq}</span>
-                            </label>
-                          ))}
-                          <div className="flex items-center gap-2 ml-auto">
-                             <input 
-                               type="text" 
-                               placeholder="Otros (Lentes, Guantes...)" 
-                               className="px-3 py-1.5 text-sm rounded border border-slate-200 focus:outline-none focus:border-emerald-500 w-48" 
-                               value={otrosEquipos} 
-                               onChange={e => setOtrosEquipos(e.target.value)}
-                             />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Talla Calzado {equiposSeleccionados.includes("Botas") && <span className="text-emerald-500">*</span>}</label>
-                        <select
-                          disabled={!equiposSeleccionados.includes("Botas")}
-                          required={equiposSeleccionados.includes("Botas")}
-                          value={formData.talla_calzado}
-                          onChange={e => setFormData({ ...formData, talla_calzado: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
-                        >
-                          <option value="">Seleccione...</option>
-                          {Array.from({ length: 48 - 32 + 1 }, (_, i) => i + 32).map(size => (
-                            <option key={size} value={size.toString()}>{size}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Talla Casco {equiposSeleccionados.includes("Casco") && <span className="text-emerald-500">*</span>}</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Renovación</label>
                         <input
-                          type="text"
-                          readOnly
-                          placeholder="Ej. Estándar"
-                          disabled={!equiposSeleccionados.includes("Casco")}
-                          required={equiposSeleccionados.includes("Casco")}
-                          value={formData.talla_casco}
-                          onChange={e => setFormData({ ...formData, talla_casco: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
+                          type="date"
+                          value={formData.fecha_proxima_renovacion}
+                          onChange={e => setFormData({...formData, fecha_proxima_renovacion: e.target.value})}
+                          className="w-full px-4 py-2 rounded-lg border border-slate-200 bg-white"
                         />
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Talla Chaleco {equiposSeleccionados.includes("Chaleco") && <span className="text-emerald-500">*</span>}</label>
-                        <select
-                          disabled={!equiposSeleccionados.includes("Chaleco")}
-                          required={equiposSeleccionados.includes("Chaleco")}
-                          value={formData.talla_chaleco}
-                          onChange={e => setFormData({ ...formData, talla_chaleco: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
-                        >
-                          <option value="">Seleccione...</option>
-                          {["XS", "S", "M", "L", "XL"].map(size => (
-                            <option key={size} value={size}>{size}</option>
-                          ))}
-                        </select>
-                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Motivo</label>
+                      <Select
+                        value={formData.motivo_entrega}
+                        onChange={e => setFormData({...formData, motivo_entrega: e.target.value})}
+                        options={[
+                          { value: "Nuevo Ingreso", label: "Nuevo Ingreso" },
+                          { value: "Renovación", label: "Renovación por desgaste" },
+                          { value: "Pérdida", label: "Pérdida" },
+                          { value: "Cambio de Puesto", label: "Cambio de Puesto" },
+                        ]}
+                        triggerClassName="w-full px-4 py-2.5 rounded-lg border-slate-200 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Columna Derecha: Equipos a Entregar */}
+                  <div className="space-y-4 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium text-emerald-900">2. Equipos a Entregar</h4>
+                      <button 
+                        type="button" 
+                        onClick={handleAddItemToDelivery}
+                        className="text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 py-1.5 rounded-md font-medium transition-colors"
+                      >
+                        + Agregar Equipo
+                      </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Motivo</label>
-                        <select
-                          value={formData.motivo_entrega}
-                          onChange={e => setFormData({ ...formData, motivo_entrega: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                        >
-                          <option value="Nuevo Ingreso">Nuevo Ingreso</option>
-                          <option value="Renovación">Renovación</option>
-                          <option value="Deterioro">Deterioro</option>
-                          <option value="Pérdida">Pérdida</option>
-                        </select>
+                    {selectedItems.length === 0 ? (
+                      <div className="text-center py-6 text-emerald-600/60 text-sm border-2 border-dashed border-emerald-200 rounded-lg bg-emerald-50/30">
+                        Haga clic en "Agregar Equipo" para seleccionar del almacén.
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Estado</label>
-                        <select
-                          value={formData.estado_firma}
-                          onChange={e => setFormData({ ...formData, estado_firma: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                        >
-                          <option value="Entregado">Entregado / Firmado</option>
-                          <option value="Pendiente">Pendiente de Firma</option>
-                        </select>
+                    ) : (
+                      <div className="space-y-3">
+                        {selectedItems.map((item, index) => (
+                          <div key={item.id} className="flex gap-2 items-center bg-white p-2 rounded-lg border border-emerald-100 shadow-sm">
+                            <span className="text-xs font-bold text-slate-400 w-5 text-center">{index + 1}</span>
+                            <div className="flex-1">
+                              <Select
+                                required
+                                value={item.epp_item_id}
+                                onChange={e => updateDeliveryItem(item.id, 'epp_item_id', e.target.value)}
+                                options={eppItems.map(i => ({ 
+                                  value: i.id, 
+                                  label: `${i.nombre} (Stock: ${i.stock_actual})` 
+                                }))}
+                                placeholder="Seleccionar ítem..."
+                                triggerClassName="w-full px-3 py-1.5 rounded-md border-slate-200 text-sm"
+                              />
+                            </div>
+                            <div className="w-16">
+                              <input 
+                                type="number" 
+                                min="1"
+                                required
+                                value={item.cantidad}
+                                onChange={e => updateDeliveryItem(item.id, 'cantidad', parseInt(e.target.value))}
+                                className="w-full px-2 py-1.5 rounded-md border border-slate-200 text-sm text-center focus:ring-emerald-500 focus:border-emerald-500"
+                              />
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={() => removeDeliveryItem(item.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -360,15 +352,15 @@ export default function EPPPage() {
                   <button
                     type="button"
                     onClick={() => setIsAdding(false)}
-                    className="px-6 py-2.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                    className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-100 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-2.5 rounded-xl font-medium shadow-sm shadow-emerald-200 transition-all active:scale-95"
                   >
-                    Guardar Registro
+                    Guardar Entrega
                   </button>
                 </div>
               </form>
@@ -378,64 +370,89 @@ export default function EPPPage() {
       </AnimatePresence>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row gap-4 justify-between items-center">
-          <div className="relative w-full sm:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Buscar por nombre o DNI..."
+              placeholder="Buscar por empleado o DNI..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white text-sm"
+              className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm bg-white"
             />
           </div>
         </div>
-
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-4">Empleado</th>
-                <th className="px-6 py-4">Equipos</th>
-                <th className="px-6 py-4">Tallas (Calz/Chal/Casc)</th>
-                <th className="px-6 py-4">Fecha Entrega</th>
-                <th className="px-6 py-4">Motivo</th>
-                <th className="px-6 py-4">Estado</th>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50">
+                <th className="px-6 py-4 text-sm font-semibold text-slate-600">Empleado</th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-600">Equipos Entregados</th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-600">Fecha Entrega</th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-600">Motivo</th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-600">Renovación</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredRecords.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">Cargando registros...</td>
+                </tr>
+              ) : filteredRecords.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500 flex flex-col items-center gap-2">
+                    <ShieldCheck className="w-8 h-8 text-slate-300" />
+                    <p>No se encontraron registros de entrega de EPP.</p>
+                  </td>
+                </tr>
+              ) : (
                 filteredRecords.map((record) => (
                   <tr key={record.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="font-medium text-slate-900">{record.empleados?.nombres} {record.empleados?.apellidos}</div>
-                      <div className="text-slate-500 text-xs">DNI: {record.empleados?.dni} • {record.empleados?.puesto}</div>
+                      <div className="font-medium text-slate-900">
+                        {record.empleados?.nombres} {record.empleados?.apellidos}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5 flex gap-2">
+                        <span>DNI: {record.empleados?.dni}</span>
+                        <span>•</span>
+                        <span>{record.empleados?.puesto}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-slate-700">{record.equipo}</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {record.epp_transactions && record.epp_transactions.length > 0 ? (
+                          record.epp_transactions.map(tx => (
+                            <span key={tx.id} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                              {tx.cantidad}x {tx.epp_items?.nombre}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">No detalla</span>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-slate-700">
-                      {record.talla_calzado || '-'} / {record.talla_chaleco || '-'} / {record.talla_casco || '-'}
+                    <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
+                      {record.fecha_entrega}
                     </td>
-                    <td className="px-6 py-4 text-slate-700">{record.fecha_entrega}</td>
-                    <td className="px-6 py-4 text-slate-700">{record.motivo_entrega}</td>
                     <td className="px-6 py-4">
-                      <span className={clsx(
-                        "px-2.5 py-1 rounded-full text-xs font-semibold",
-                        record.estado_firma.includes("Pendiente") ? "bg-amber-100 text-amber-700" :
-                        "bg-emerald-100 text-emerald-700"
-                      )}>
-                        {record.estado_firma}
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700">
+                        {record.motivo_entrega}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
+                      {record.fecha_proxima_renovacion ? (
+                        new Date(record.fecha_proxima_renovacion) < new Date() ? (
+                          <span className="text-red-600 font-medium flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            {record.fecha_proxima_renovacion}
+                          </span>
+                        ) : (
+                          record.fecha_proxima_renovacion
+                        )
+                      ) : '-'}
                     </td>
                   </tr>
                 ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
-                    {loading ? "Cargando registros..." : "No se encontraron registros de EPP."}
-                  </td>
-                </tr>
               )}
             </tbody>
           </table>
