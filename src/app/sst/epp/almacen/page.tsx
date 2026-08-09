@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Fragment } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, PackageSearch, PackagePlus, History, TrendingDown, TrendingUp, AlertTriangle, ClipboardList, ArrowRightLeft, Search, X } from "lucide-react";
+import { Plus, PackageSearch, PackagePlus, History, TrendingDown, TrendingUp, AlertTriangle, ClipboardList, ArrowRightLeft, Search, X, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 import Select from "@/components/ui/Select";
