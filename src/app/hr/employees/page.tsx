@@ -49,7 +49,6 @@ type Empleado = {
   tipo_cuenta?: string;
   fecha_cese?: string;
   talla_chaleco?: string;
-  talla_chaleco?: string;
   talla_calzado?: string;
   horario_id?: string | null;
 };
