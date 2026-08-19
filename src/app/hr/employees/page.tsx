@@ -1316,7 +1316,8 @@ export default function EmployeesPage() {
                       tipo_cuenta: selectedEmpleado.tipo_cuenta || "",
                       fecha_cese: selectedEmpleado.fecha_cese || "",
                       talla_chaleco: selectedEmpleado.talla_chaleco || "",
-                      talla_calzado: selectedEmpleado.talla_calzado || ""
+                      talla_calzado: selectedEmpleado.talla_calzado || "",
+                      horario_id: selectedEmpleado.horario_id || ""
                     });
                     setEditingId(selectedEmpleado.id);
                     setSelectedEmpleado(null);
