@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree, HeartPulse, ShieldCheck, FileBadge, Clock, Bell, UserCheck, BookOpen, PackageCheck, ShieldAlert } from "lucide-react";
+import { CalendarDays, FileText, CheckSquare, Upload, LayoutDashboard, Wrench, PlusSquare, ArrowLeft, BarChart3, Menu, X, Home, Users, Palmtree, HeartPulse, ShieldCheck, FileBadge, Clock, Bell, UserCheck, BookOpen, PackageCheck, ShieldAlert, ScanFace, MonitorSmartphone } from "lucide-react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
@@ -35,6 +35,11 @@ const hrRoutes = [
     path: "/hr/vacations",
     icon: Palmtree,
   },
+  ...(process.env.NEXT_PUBLIC_ENABLE_BIOMETRICS === 'true' ? [{
+    name: "Gestor Horarios",
+    path: "/hr/horarios",
+    icon: Clock, // Usaremos un icono de reloj para horarios
+  }] : []),
   {
     name: "Cambios de Horario",
     path: "/hr/schedule-changes",
@@ -127,6 +132,18 @@ const adminRoutes = [
     path: "/admin/usuarios",
     icon: Users,
   },
+  ...(process.env.NEXT_PUBLIC_ENABLE_BIOMETRICS === 'true' ? [
+    {
+      name: "Enrolamiento Biométrico",
+      path: "/admin/biometria",
+      icon: ScanFace,
+    },
+    {
+      name: "Modo Kiosco (Asistencia)",
+      path: "/kiosk",
+      icon: MonitorSmartphone,
+    }
+  ] : []),
 ];
 
 export function Sidebar() {
@@ -138,7 +155,7 @@ export function Sidebar() {
     setIsOpen(false);
   }, [pathname]);
 
-  if (pathname === "/") return null;
+  if (pathname === "/" || pathname === "/kiosk") return null;
 
   const isAdmin = pathname.startsWith("/admin");
   const isMantenimiento = pathname.startsWith("/mantenimiento");
@@ -154,7 +171,7 @@ export function Sidebar() {
           <button onClick={() => setIsOpen(true)} className="p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors">
             <Menu className="w-6 h-6 text-gray-700" />
           </button>
-          <img src="/logo.png" alt="DICAR LOGISTIC" className="h-8 object-contain" />
+          <img src={process.env.NEXT_PUBLIC_CLIENT_LOGO || "/logo.png"} alt={process.env.NEXT_PUBLIC_CLIENT_NAME || "Logo"} className="h-8 object-contain" />
         </div>
         
         {/* Botones superiores: Atrás y Inicio */}
@@ -225,8 +242,8 @@ export function Sidebar() {
         <div className="p-4 border-b border-gray-100 flex flex-col gap-4">
           <div className="flex items-center justify-center pt-2">
             <img 
-              src="/logo.png" 
-              alt="DICAR LOGISTIC" 
+              src={process.env.NEXT_PUBLIC_CLIENT_LOGO || "/logo.png"} 
+              alt={process.env.NEXT_PUBLIC_CLIENT_NAME || "Logo"} 
               className="w-40 object-contain"
             />
           </div>

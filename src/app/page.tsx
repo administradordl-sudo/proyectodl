@@ -15,11 +15,11 @@ export default function Home() {
         transition={{ duration: 0.6 }}
         className="text-center mb-4"
       >
-        <div className="flex justify-center mb-1">
-          <Image src="/logo.png" alt="Logo" width={45} height={45} className="object-contain" />
+        <div className="flex justify-center mb-8">
+          <Image src={process.env.NEXT_PUBLIC_CLIENT_LOGO || "/logo.png"} alt={process.env.NEXT_PUBLIC_CLIENT_NAME || "Logo"} width={45} height={45} className="object-contain" />
         </div>
         <h1 className="text-3xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-1">
-          DICAR LOGISTIC
+          {process.env.NEXT_PUBLIC_CLIENT_NAME || "DICAR LOGISTIC"}
         </h1>
         <p className="text-sm text-slate-500 max-w-lg mx-auto mb-3 px-4">
           Selecciona el módulo al que deseas acceder.

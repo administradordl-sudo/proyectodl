@@ -288,22 +288,39 @@ export default function KpisPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-12">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard de KPIs</h1>
-          <p className="text-gray-500 mt-2">Analiza el rendimiento histórico de asistencia desde la base de datos.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard de Asistencia</h1>
+          <p className="text-gray-500 mt-1">
+            Indicadores de tardanzas, faltas y áreas críticas
+            {process.env.NEXT_PUBLIC_ENABLE_BIOMETRICS === 'true' && " (Modo Biométrico en Tiempo Real)"}
+          </p>
         </div>
-        <button
-          onClick={() => setShowUploader(!showUploader)}
-          className="flex items-center gap-2 text-sm bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-        >
-          <Database className="w-4 h-4" />
-          {showUploader ? "Ocultar Importador" : "Importar Excel"}
-        </button>
+        
+        {process.env.NEXT_PUBLIC_ENABLE_BIOMETRICS !== 'true' && (
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            {data && (data.resumen.totalFaltas > 0 || data.resumen.totalTardanzasHoras > 0 || data.resumen.totalExtrasHoras > 0) && (
+              <button 
+                onClick={fetchStats}
+                className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-gray-200"
+                title="Actualizar datos"
+              >
+                <TrendingUp className="w-5 h-5" />
+              </button>
+            )}
+            <button
+              onClick={() => setShowUploader(!showUploader)}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-all shadow-sm shadow-blue-600/20"
+            >
+              <Upload className="w-5 h-5" />
+              {showUploader ? "Ocultar Importador" : "Importar Excel"}
+            </button>
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
-        {showUploader && (
+        {process.env.NEXT_PUBLIC_ENABLE_BIOMETRICS !== 'true' && showUploader && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -601,31 +618,35 @@ export default function KpisPage() {
       </AnimatePresence>
 
       {/* Loading state */}
-      {isLoadingStats && (
+      {isLoadingStats ? (
         <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-          <p className="text-gray-500">Cargando métricas desde Supabase...</p>
+          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
+          <p className="text-gray-500 font-medium">Calculando indicadores...</p>
         </div>
-      )}
-
-      {/* Empty State */}
-      {!isLoadingStats && data && data.resumen.totalFaltas === 0 && data.resumen.totalTardanzasHoras === 0 && data.resumen.totalExtrasHoras === 0 && (
-         <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
-           <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-             <Database className="w-10 h-10 text-gray-300" />
-           </div>
-           <h3 className="text-xl font-bold text-gray-900 mb-2">No hay datos en la base de datos</h3>
+      ) : !data || (data.resumen.totalFaltas === 0 && data.resumen.totalTardanzasHoras === 0 && data.resumen.totalExtrasHoras === 0) ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center shadow-sm">
+          <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-5">
+            <BarChart3 className="w-10 h-10 text-blue-500" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Aún no hay datos analizados</h3>
+          
+          {process.env.NEXT_PUBLIC_ENABLE_BIOMETRICS !== 'true' ? (
            <p className="text-gray-500 mb-6 max-w-md mx-auto">Importa tu reporte Excel de marcaciones utilizando el botón de arriba para comenzar a generar los indicadores históricos.</p>
-           <button
-             onClick={() => setShowUploader(true)}
-             className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center gap-2"
-           >
-             <Upload className="w-5 h-5" />
-             Empezar a importar
-           </button>
-         </div>
-      )}
+          ) : (
+           <p className="text-gray-500 mb-6 max-w-md mx-auto">El sistema biométrico aún no ha registrado asistencias ni faltas para este periodo.</p>
+          )}
 
+          {process.env.NEXT_PUBLIC_ENABLE_BIOMETRICS !== 'true' && !showUploader && (
+            <button 
+              onClick={() => setShowUploader(true)}
+              className="text-blue-600 font-semibold hover:underline"
+            >
+              Comenzar importación
+            </button>
+          )}
+        </div>
+      ) : (
+      <>
       {/* Dashboard */}
       {!isLoadingStats && data && (data.resumen.totalFaltas > 0 || data.resumen.totalTardanzasHoras > 0 || data.resumen.totalExtrasHoras > 0) && (
         <motion.div
@@ -836,9 +857,10 @@ export default function KpisPage() {
                 )}
               </div>
             </div>
-
           </div>
         </motion.div>
+      )}
+      </>
       )}
     </div>
   );

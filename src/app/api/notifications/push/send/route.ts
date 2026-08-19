@@ -39,7 +39,8 @@ export async function POST(req: Request) {
       title,
       body,
       url: url || '/',
-      icon: '/logo.png'
+      icon: process.env.NEXT_PUBLIC_CLIENT_LOGO || '/logo.png',
+      badge: process.env.NEXT_PUBLIC_CLIENT_LOGO || '/logo.png',
     })
 
     const results = await Promise.allSettled(

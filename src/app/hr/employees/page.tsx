@@ -49,7 +49,9 @@ type Empleado = {
   tipo_cuenta?: string;
   fecha_cese?: string;
   talla_chaleco?: string;
+  talla_chaleco?: string;
   talla_calzado?: string;
+  horario_id?: string | null;
 };
 
 const initialForm = {
@@ -58,7 +60,7 @@ const initialForm = {
   hijos: "", carrera: "", distrito: "", nro_cta: "", tipo_cta: "", afp: "", cuspp: "",
   vida_ley: "No Entregado", sede: "", status: "Activo", fecha_inicio_contrato: "", 
   fecha_fin_contrato: "", estado_civil: "", correo_personal: "", entidad_bancaria: "", 
-  tipo_cuenta: "", fecha_cese: "", talla_chaleco: "", talla_calzado: ""
+  tipo_cuenta: "", fecha_cese: "", talla_chaleco: "", talla_calzado: "", horario_id: ""
 };
 
 export default function EmployeesPage() {
@@ -106,6 +108,7 @@ export default function EmployeesPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [horariosDisponibles, setHorariosDisponibles] = useState<{id: string, nombre: string}[]>([]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -418,6 +421,12 @@ export default function EmployeesPage() {
     fetchEmpleados();
     fetchOptions();
     
+    const fetchHorarios = async () => {
+      const { data } = await supabase.from('horarios').select('id, nombre').order('nombre');
+      if (data) setHorariosDisponibles(data);
+    };
+    fetchHorarios();
+    
     const channel = supabase
       .channel('realtime-employees')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'empleados' }, (payload) => {
@@ -489,7 +498,10 @@ export default function EmployeesPage() {
 
     setIsSubmitting(true);
     try {
-      const dataToSubmit = { ...formData };
+      const dataToSubmit = { 
+        ...formData,
+        horario_id: formData.horario_id || null 
+      };
       
       // Clean empty strings for date fields to prevent Supabase errors
       if (!dataToSubmit.fecha_ingreso) delete (dataToSubmit as any).fecha_ingreso;
@@ -836,7 +848,21 @@ export default function EmployeesPage() {
                           onOptionDelete={(val) => handleDeleteOption('sede', val)}
                         />
                       </div>
-                      <div className="sm:col-span-3"><label className="block text-xs font-medium text-gray-600 mb-1">Jefe Directo</label><input name="jefe" value={formData.jefe || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Horario Asignado</label>
+                        <select
+                          name="horario_id"
+                          value={formData.horario_id || ""}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500 bg-white"
+                        >
+                          <option value="">-- Seleccionar horario --</option>
+                          {horariosDisponibles.map(h => (
+                            <option key={h.id} value={h.id}>{h.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="sm:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1">Jefe Directo</label><input name="jefe" value={formData.jefe || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-blue-500" /></div>
                     </div>
                   )}
                 </div>

@@ -73,7 +73,7 @@ export async function createTicket(formData: FormData, evidencia_url: string | n
               title: 'Nuevo Ticket de Mantenimiento',
               body: `Se ha creado el ticket: ${titulo}`,
               url: '/mantenimiento',
-              icon: '/logo.png'
+              icon: process.env.NEXT_PUBLIC_CLIENT_LOGO || '/logo.png'
             });
 
             await Promise.allSettled(
